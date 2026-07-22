@@ -1,0 +1,43 @@
+<%- include('partials/header', { title: 'Dashboard' }) %>
+
+<div class="dashboard-head">
+  <h1>Returns Dashboard</h1>
+  <form action="/dashboard" method="GET" class="search-form">
+    <input type="hidden" name="tab" value="<%= tab %>" />
+    <input type="text" name="q" placeholder="Search reference, company, serial..." value="<%= q %>" />
+    <button type="submit" class="btn btn-secondary">Search</button>
+  </form>
+</div>
+
+<div class="tabs">
+  <a href="/dashboard?tab=live&q=<%= encodeURIComponent(q) %>" class="tab <%= tab === 'live' ? 'active' : '' %>">Live (<%= live.length %>)</a>
+  <a href="/dashboard?tab=archived&q=<%= encodeURIComponent(q) %>" class="tab <%= tab === 'archived' ? 'active' : '' %>">Archived (<%= archived.length %>)</a>
+</div>
+
+<% const rows = tab === 'archived' ? archived : live; %>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Reference</th><th>Company</th><th>Contact</th><th>Equipment</th><th>Status</th><th>Updated</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% rows.forEach(r => { %>
+      <tr>
+        <td><%= r.reference %></td>
+        <td><%= r.company_name %></td>
+        <td><%= r.contact_name %></td>
+        <td><%= r.make %> <%= r.model %></td>
+        <td><span class="status-pill" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span></td>
+        <td><%= new Date(r.updated_at).toLocaleString('en-GB') %></td>
+        <td><a class="btn btn-small" href="/returns/<%= r.id %>">Open</a></td>
+      </tr>
+    <% }) %>
+    <% if (rows.length === 0) { %>
+      <tr><td colspan="7" class="muted">No returns found.</td></tr>
+    <% } %>
+  </tbody>
+</table>
+
+<%- include('partials/footer') %>

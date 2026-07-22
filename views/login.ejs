@@ -1,0 +1,16 @@
+<%- include('partials/header', { title: 'Staff Login' }) %>
+
+<h1>Staff Login</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form action="/login" method="POST" class="card form-grid">
+  <label>Username
+    <input type="text" name="username" required autofocus />
+  </label>
+  <label>Password
+    <input type="password" name="password" required />
+  </label>
+  <button type="submit" class="btn btn-primary full">Log In</button>
+</form>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,81 @@
+const { DatabaseSync } = require('node:sqlite');
+const path = require('path');
+const bcrypt = require('bcryptjs');
+const { STATUSES } = require('./utils/constants');
+
+const DB_PATH = path.join(__dirname, 'data', 'returns.db');
+const db = new DatabaseSync(DB_PATH);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'staff',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS returns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reference TEXT UNIQUE NOT NULL,
+    company_name TEXT NOT NULL,
+    contact_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    equipment_type TEXT NOT NULL,
+    make TEXT NOT NULL,
+    model TEXT NOT NULL,
+    serial_number TEXT NOT NULL,
+    fault_description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Return Submitted',
+    staff_notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS return_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    return_id INTEGER NOT NULL,
+    filename TEXT NOT NULL,
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    uploaded_by TEXT NOT NULL DEFAULT 'customer',
+    uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (return_id) REFERENCES returns(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS return_status_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    return_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    changed_by TEXT NOT NULL,
+    note TEXT DEFAULT '',
+    changed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (return_id) REFERENCES returns(id)
+  );
+`);
+
+// Seed a default admin user if no users exist yet
+const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+if (userCount === 0) {
+  const defaultUsername = process.env.DEFAULT_ADMIN_USER || 'admin';
+  const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'ChangeMe123!';
+  const hash = bcrypt.hashSync(defaultPassword, 10);
+  db.prepare(
+    'INSERT INTO users (username, password_hash, name, role) VALUES (?, ?, ?, ?)'
+  ).run(defaultUsername, hash, 'Administrator', 'admin');
+  console.log(`Seeded default staff login -> username: "${defaultUsername}" password: "${defaultPassword}" (change this after first login!)`);
+}
+
+function nextReference() {
+  const year = new Date().getFullYear();
+  const row = db.prepare(
+    `SELECT COUNT(*) AS c FROM returns WHERE reference LIKE ?`
+  ).get(`RT-${year}-%`);
+  const seq = String(row.c + 1).padStart(4, '0');
+  return `RT-${year}-${seq}`;
+}
+
+module.exports = { db, nextReference, STATUSES };

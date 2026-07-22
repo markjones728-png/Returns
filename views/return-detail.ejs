@@ -1,0 +1,95 @@
+<%- include('partials/header', { title: r.reference + ' - ' + r.status }) %>
+
+<div class="detail-head">
+  <h1><%= r.reference %></h1>
+  <span class="status-pill big" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span>
+  <a class="btn btn-secondary" href="/returns/<%= r.id %>/pdf">Download PDF Report</a>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <h2>Customer Details</h2>
+    <p><strong>Company:</strong> <%= r.company_name %></p>
+    <p><strong>Contact:</strong> <%= r.contact_name %></p>
+    <p><strong>Phone:</strong> <%= r.phone %></p>
+    <p><strong>Email:</strong> <%= r.email %></p>
+  </div>
+
+  <div class="card">
+    <h2>Equipment Details</h2>
+    <p><strong>Type:</strong> <%= r.equipment_type %></p>
+    <p><strong>Make:</strong> <%= r.make %></p>
+    <p><strong>Model:</strong> <%= r.model %></p>
+    <p><strong>Serial Number:</strong> <%= r.serial_number %></p>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Fault Description</h2>
+  <p><%= r.fault_description %></p>
+</div>
+
+<div class="card">
+  <h2>Update Status</h2>
+  <form action="/returns/<%= r.id %>/status" method="POST" class="form-grid">
+    <label>New Status
+      <select name="status" required>
+        <% STATUSES.forEach(s => { %>
+          <option value="<%= s %>" <%= s === r.status ? 'selected' : '' %>><%= s %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label class="full">Note (optional)
+      <input type="text" name="note" placeholder="e.g. Collected by XYZ Couriers, tracking 12345" />
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="notify" checked />
+      Email the customer about this update
+    </label>
+    <button type="submit" class="btn btn-primary full">Update Status</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Staff Notes</h2>
+  <form action="/returns/<%= r.id %>/notes" method="POST" class="form-grid">
+    <textarea name="staff_notes" rows="4" class="full"><%= r.staff_notes %></textarea>
+    <button type="submit" class="btn btn-secondary full">Save Notes</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Photos &amp; Videos</h2>
+  <div class="media-grid">
+    <% files.forEach(f => { %>
+      <div class="media-item">
+        <% if (f.kind === 'photo') { %>
+          <a href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
+            <img src="/files/<%= r.id %>/<%= f.filename %>" alt="<%= f.original_name %>" />
+          </a>
+        <% } else { %>
+          <video controls src="/files/<%= r.id %>/<%= f.filename %>"></video>
+        <% } %>
+        <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
+      </div>
+    <% }) %>
+    <% if (files.length === 0) { %><p class="muted">No files uploaded yet.</p><% } %>
+  </div>
+  <form action="/returns/<%= r.id %>/files" method="POST" enctype="multipart/form-data" class="form-grid">
+    <label class="full">Upload additional photos/videos
+      <input type="file" name="files" multiple accept="image/*,video/*" />
+    </label>
+    <button type="submit" class="btn btn-secondary full">Upload</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Status History</h2>
+  <ul class="timeline">
+    <% history.forEach(h => { %>
+      <li><strong><%= h.status %></strong> &mdash; <%= new Date(h.changed_at).toLocaleString('en-GB') %> by <%= h.changed_by %><% if (h.note) { %> <em>(<%= h.note %>)</em><% } %></li>
+    <% }) %>
+  </ul>
+</div>
+
+<%- include('partials/footer') %>

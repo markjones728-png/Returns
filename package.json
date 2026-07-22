@@ -1,0 +1,23 @@
+{
+  "name": "roger-technology-returns",
+  "version": "1.0.0",
+  "description": "Customer returns (RMA) tracking portal for Roger Technology equipment",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "express-session": "^1.18.0",
+    "multer": "^2.0.0",
+    "nodemailer": "^6.9.15",
+    "pdfkit": "^0.15.0"
+  }
+}

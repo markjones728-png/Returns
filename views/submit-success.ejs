@@ -1,0 +1,12 @@
+<%- include('partials/header', { title: 'Return Submitted' }) %>
+
+<div class="card success-card">
+  <h1>Return Submitted</h1>
+  <p>Thank you. Your return has been logged and our team has been notified.</p>
+  <p class="reference">Reference: <strong><%= reference %></strong></p>
+  <p class="muted">A confirmation email has been sent to you. Please quote this reference in any correspondence.
+  You can check progress any time using the <a href="/track">Track a Return</a> page.</p>
+  <a class="btn btn-primary" href="/submit">Submit Another Return</a>
+</div>
+
+<%- include('partials/footer') %>

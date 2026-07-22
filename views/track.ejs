@@ -1,0 +1,33 @@
+<%- include('partials/header', { title: 'Track a Return' }) %>
+
+<h1>Track a Return</h1>
+<p class="muted">Enter your reference number and the email address used when submitting the return.</p>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form action="/track" method="POST" class="card form-grid">
+  <label>Reference Number *
+    <input type="text" name="reference" placeholder="RT-2026-0001" required />
+  </label>
+  <label>Email Address *
+    <input type="email" name="email" required />
+  </label>
+  <button type="submit" class="btn btn-primary full">Track Return</button>
+</form>
+
+<% if (result) { %>
+  <div class="card">
+    <h2><%= result.returnRow.reference %> &mdash; <span class="status-pill" style="background:#0284c7"><%= result.returnRow.status %></span></h2>
+    <p><strong>Equipment:</strong> <%= result.returnRow.make %> <%= result.returnRow.model %> (Serial: <%= result.returnRow.serial_number %>)</p>
+    <p><strong>Fault reported:</strong> <%= result.returnRow.fault_description %></p>
+
+    <h3>Status History</h3>
+    <ul class="timeline">
+      <% result.history.forEach(h => { %>
+        <li><strong><%= h.status %></strong> &mdash; <%= new Date(h.changed_at).toLocaleString('en-GB') %><% if (h.note) { %> <em>(<%= h.note %>)</em><% } %></li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

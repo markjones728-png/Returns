@@ -1,0 +1,48 @@
+<%- include('partials/header', { title: 'Submit a Return' }) %>
+
+<h1>Book in a Return</h1>
+<p class="muted">Please complete the details below. We'll email you a confirmation with your reference number.</p>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form action="/submit" method="POST" enctype="multipart/form-data" class="card form-grid">
+  <h2>Your Details</h2>
+  <label>Company Name *
+    <input type="text" name="company_name" value="<%= old.company_name || '' %>" required />
+  </label>
+  <label>Contact Name *
+    <input type="text" name="contact_name" value="<%= old.contact_name || '' %>" required />
+  </label>
+  <label>Phone Number *
+    <input type="tel" name="phone" value="<%= old.phone || '' %>" required />
+  </label>
+  <label>Email Address *
+    <input type="email" name="email" value="<%= old.email || '' %>" required />
+  </label>
+
+  <h2>Equipment Details</h2>
+  <label>Equipment Type *
+    <input type="text" name="equipment_type" placeholder="e.g. Barrier, Gate Motor, Access Control Unit" value="<%= old.equipment_type || '' %>" required />
+  </label>
+  <label>Make *
+    <input type="text" name="make" placeholder="Roger Technology" value="<%= old.make || '' %>" required />
+  </label>
+  <label>Model *
+    <input type="text" name="model" value="<%= old.model || '' %>" required />
+  </label>
+  <label>Serial Number *
+    <input type="text" name="serial_number" value="<%= old.serial_number || '' %>" required />
+  </label>
+  <label class="full">Description of Fault *
+    <textarea name="fault_description" rows="5" required><%= old.fault_description || '' %></textarea>
+  </label>
+
+  <h2>Photos / Videos (optional)</h2>
+  <label class="full">Attach photos or videos of the fault
+    <input type="file" name="files" multiple accept="image/*,video/*" />
+  </label>
+
+  <button type="submit" class="btn btn-primary full">Submit Return</button>
+</form>
+
+<%- include('partials/footer') %>

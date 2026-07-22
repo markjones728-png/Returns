@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= typeof title !== 'undefined' ? title : 'Roger Technology Returns Portal' %></title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">Roger Technology <span>Returns Portal</span></a>
+    <nav>
+      <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+        <a href="/dashboard">Dashboard</a>
+        <% if (currentUser.role === 'admin') { %><a href="/users">Staff</a><% } %>
+        <span class="who">Signed in as <%= currentUser.name %></span>
+        <form action="/logout" method="POST" class="inline-form"><button class="link-btn" type="submit">Log out</button></form>
+      <% } else { %>
+        <a href="/submit">Submit a Return</a>
+        <a href="/track">Track a Return</a>
+        <a href="/login">Staff Login</a>
+      <% } %>
+    </nav>
+  </header>
+  <main class="container">

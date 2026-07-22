@@ -1,0 +1,31 @@
+<%- include('partials/header', { title: 'Staff Accounts' }) %>
+
+<h1>Staff Accounts</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<table class="table">
+  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Created</th></tr></thead>
+  <tbody>
+    <% users.forEach(u => { %>
+      <tr><td><%= u.name %></td><td><%= u.username %></td><td><%= u.role %></td><td><%= new Date(u.created_at).toLocaleDateString('en-GB') %></td></tr>
+    <% }) %>
+  </tbody>
+</table>
+
+<div class="card">
+  <h2>Add Staff Member</h2>
+  <form action="/users" method="POST" class="form-grid">
+    <label>Full Name <input type="text" name="name" required /></label>
+    <label>Username <input type="text" name="username" required /></label>
+    <label>Password <input type="password" name="password" required /></label>
+    <label>Role
+      <select name="role">
+        <option value="staff">Staff</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn-primary full">Add User</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>
