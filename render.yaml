@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: roger-technology-returns
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DEFAULT_ADMIN_USER
+        value: admin
+      - key: DEFAULT_ADMIN_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+# --- Upgrading to keep data permanently (see README) ---
+# Once you're ready to move off the free plan, change `plan: free` above to
+# `plan: starter` and uncomment the disk block below, then add:
+#   - key: PERSIST_DIR
+#     value: /var/data
+# to envVars. Render will re-deploy with a permanent disk attached so
+# submitted returns, statuses and uploaded photos/videos stop disappearing.
+#
+# disk:
+#   name: returns-data
+#   mountPath: /var/data
+#   sizeGB: 1
