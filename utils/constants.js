@@ -8,13 +8,31 @@ const STATUSES = [
   'At Returns Dept',
   'Awaiting RT Italy',
   'Awaiting Inspection by Returns',
-  'Inspected',
-  'To Be Returned to Customer',
-  'Warranty Replacement Authorised',
+  'Inspected - Out Of Warranty',
+  'Inspected - Damaged',
+  'Inspected - Warranty Replacement Authorised (RTA)',
+  'Inspected - Warranty Replacement Authorised',
+  'Report Sent',
   'Return Closed'
 ];
 
 const CLOSED_STATUS = 'Return Closed';
+
+// Statuses where a Manufacturer RMA Number box should be shown on the
+// Update Status form (see return-detail.ejs).
+const STATUSES_NEEDING_RMA_NUMBER = [
+  'Inspected - Out Of Warranty',
+  'Inspected - Damaged',
+  'Inspected - Warranty Replacement Authorised (RTA)',
+  'Inspected - Warranty Replacement Authorised'
+];
+
+// Statuses where a separate RTA RT Number box should also be shown -
+// this is that manufacturer's own reference number, distinct from the
+// general Manufacturer RMA Number above.
+const STATUSES_NEEDING_RTA_NUMBER = [
+  'Inspected - Warranty Replacement Authorised (RTA)'
+];
 
 // Colour used for each status pill in the UI
 const STATUS_COLORS = {
@@ -24,9 +42,11 @@ const STATUS_COLORS = {
   'At Returns Dept': '#7c3aed',
   'Awaiting RT Italy': '#9333ea',
   'Awaiting Inspection by Returns': '#c026d3',
-  'Inspected': '#ea580c',
-  'To Be Returned to Customer': '#16a34a',
-  'Warranty Replacement Authorised': '#059669',
+  'Inspected - Out Of Warranty': '#ea580c',
+  'Inspected - Damaged': '#b91c1c',
+  'Inspected - Warranty Replacement Authorised (RTA)': '#059669',
+  'Inspected - Warranty Replacement Authorised': '#0d9488',
+  'Report Sent': '#0891b2',
   'Return Closed': '#334155'
 };
 
@@ -50,7 +70,7 @@ const DEALER_DETAILS = {
 };
 
 module.exports = {
-  STATUSES, CLOSED_STATUS, STATUS_COLORS,
+  STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
   APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
   REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
 };
