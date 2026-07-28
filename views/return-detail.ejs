@@ -43,6 +43,18 @@
   <p><%= r.fault_description %></p>
 </div>
 
+<% if (r.insp_application_type || r.insp_product_type || r.insp_dimensions || r.insp_weight || r.insp_install_date) { %>
+<div class="card">
+  <h2>Installation Details</h2>
+  <p class="muted">Captured when the return was booked in (editable below in the Inspection Form).</p>
+  <p><strong>Application Type:</strong> <%= r.insp_application_type || '-' %></p>
+  <p><strong>Door / Product Type:</strong> <%= r.insp_product_type || '-' %></p>
+  <p><strong>Dimensions:</strong> <%= r.insp_dimensions || '-' %></p>
+  <p><strong>Weight:</strong> <%= r.insp_weight || '-' %></p>
+  <p><strong>Installation Date:</strong> <%= r.insp_install_date || '-' %></p>
+</div>
+<% } %>
+
 
 <div class="card" id="inspection">
   <h2>Roger Technology Inspection Form</h2>
@@ -186,10 +198,7 @@
     <label class="full">Note (optional)
       <input type="text" name="note" placeholder="e.g. Collected by XYZ Couriers, tracking 12345" />
     </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="notify" checked />
-      Email the customer about this update
-    </label>
+    <p class="muted full">The customer will automatically be emailed whenever you change the status.</p>
     <button type="submit" class="btn btn-primary full">Update Status</button>
   </form>
 </div>
@@ -235,5 +244,7 @@
     <% }) %>
   </ul>
 </div>
+
+<%- include('partials/footer') %>
 
 <%- include('partials/footer') %>
