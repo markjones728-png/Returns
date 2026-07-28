@@ -136,6 +136,8 @@ h2 { font-size: 17px; margin: 0 0 12px; color: var(--ink); }
   color: var(--ink);
 }
 .checkbox-label { flex-direction: row !important; align-items: center; gap: 8px !important; }
+.radio-group { display: flex; gap: 20px; flex-wrap: wrap; }
+.radio-option { flex-direction: row !important; align-items: center; gap: 8px !important; font-weight: 500 !important; color: var(--ink) !important; }
 
 .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
 .alert-error { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
