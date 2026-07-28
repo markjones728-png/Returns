@@ -133,6 +133,9 @@ ensureColumn('returns', 'received_notes', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'received_completed_by', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'received_completed_at', "TEXT");
 
+// Optional staff-entered note against an individual uploaded photo/video.
+ensureColumn('return_files', 'caption', "TEXT NOT NULL DEFAULT ''");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
