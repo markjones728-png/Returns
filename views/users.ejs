@@ -4,16 +4,70 @@
 <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
 
 <table class="table">
-  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Created</th></tr></thead>
+  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
   <tbody>
     <% users.forEach(u => { %>
-      <tr><td><%= u.name %></td><td><%= u.username %></td><td><%= u.role %></td><td><%= new Date(u.created_at).toLocaleDateString('en-GB') %></td></tr>
+      <tr>
+        <td><%= u.name %></td>
+        <td><%= u.username %></td>
+        <td><%= u.role %></td>
+        <td><%= new Date(u.created_at).toLocaleDateString('en-GB') %></td>
+        <td class="table-actions">
+          <a class="btn btn-small" href="/users/<%= u.id %>/edit">Edit</a>
+          <% if (u.id !== user.id) { %>
+            <form action="/users/<%= u.id %>/delete" method="POST" class="inline-form" onsubmit="return confirm('Remove ' + <%- JSON.stringify(u.name) %> + '\'s account? They will no longer be able to log in.');">
+              <button type="submit" class="btn btn-small btn-danger">Delete</button>
+            </form>
+          <% } %>
+        </td>
+      </tr>
     <% }) %>
   </tbody>
 </table>
 
+<% if (invites.length) { %>
+  <h2 class="section-heading">Pending Invites</h2>
+  <table class="table">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Sent</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <% invites.forEach(inv => { %>
+        <tr>
+          <td><%= inv.name %></td>
+          <td><%= inv.email %></td>
+          <td><%= inv.role %></td>
+          <td><%= new Date(inv.created_at).toLocaleDateString('en-GB') %></td>
+          <td><%= inv.expired ? 'Expired' : 'Waiting for them to accept' %></td>
+          <td>
+            <form action="/users/invite/<%= inv.id %>/revoke" method="POST" class="inline-form">
+              <button type="submit" class="btn btn-small btn-danger"><%= inv.expired ? 'Remove' : 'Revoke' %></button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
 <div class="card">
-  <h2>Add Staff Member</h2>
+  <h2>Invite a New Staff Member</h2>
+  <p class="muted">They'll get an email with a link to set up their own username and password.</p>
+  <form action="/users/invite" method="POST" class="form-grid">
+    <label>Full Name <input type="text" name="name" required /></label>
+    <label>Email Address <input type="email" name="email" required /></label>
+    <label>Role
+      <select name="role">
+        <option value="staff">Staff</option>
+        <option value="admin">Admin</option>
+      </select>
+    </label>
+    <label></label>
+    <button type="submit" class="btn btn-primary full">Send Invite</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Add Staff Member Directly</h2>
+  <p class="muted">Prefer to set them up yourself instead of emailing an invite? Use this instead.</p>
   <form action="/users" method="POST" class="form-grid">
     <label>Full Name <input type="text" name="name" required /></label>
     <label>Username <input type="text" name="username" required /></label>
@@ -24,7 +78,7 @@
         <option value="admin">Admin</option>
       </select>
     </label>
-    <button type="submit" class="btn btn-primary full">Add User</button>
+    <button type="submit" class="btn btn-secondary full">Add User</button>
   </form>
 </div>
 

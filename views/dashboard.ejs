@@ -2,11 +2,14 @@
 
 <div class="dashboard-head">
   <h1>Returns Dashboard</h1>
-  <form action="/dashboard" method="GET" class="search-form">
-    <input type="hidden" name="tab" value="<%= tab %>" />
-    <input type="text" name="q" placeholder="Search reference, company, serial..." value="<%= q %>" />
-    <button type="submit" class="btn btn-secondary">Search</button>
-  </form>
+  <div class="dashboard-head-actions">
+    <form action="/dashboard" method="GET" class="search-form">
+      <input type="hidden" name="tab" value="<%= tab %>" />
+      <input type="text" name="q" placeholder="Search reference, company, serial..." value="<%= q %>" />
+      <button type="submit" class="btn btn-secondary">Search</button>
+    </form>
+    <a class="btn btn-primary" href="/returns/new">+ Log a New Return</a>
+  </div>
 </div>
 
 <div class="tabs">

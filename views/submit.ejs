@@ -20,6 +20,25 @@
     <input type="email" name="email" value="<%= old.email || '' %>" required />
   </label>
 
+  <h2>Collection Details</h2>
+  <label class="full">Collection Address *
+    <textarea name="collection_address" rows="3" placeholder="Address the courier should collect from" required><%= old.collection_address || '' %></textarea>
+  </label>
+  <label>Premises Type *
+    <select name="premises_type" required>
+      <option value="" disabled <%= !old.premises_type ? 'selected' : '' %>>Select...</option>
+      <% ['Office', 'House', 'Unit', 'Box', 'Shed', 'Other'].forEach(t => { %>
+        <option value="<%= t %>" <%= old.premises_type === t ? 'selected' : '' %>><%= t %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Open Hours of Collection Address *
+    <input type="text" name="collection_hours" placeholder="e.g. Mon-Fri 9am-5pm" value="<%= old.collection_hours || '' %>" required />
+  </label>
+  <label class="full">Contact Number for Courier *
+    <input type="tel" name="courier_contact_number" placeholder="Best number for the courier to call on collection day" value="<%= old.courier_contact_number || '' %>" required />
+  </label>
+
   <h2>Equipment Details</h2>
   <label>Equipment Type *
     <input type="text" name="equipment_type" placeholder="e.g. Barrier, Gate Motor, Access Control Unit" value="<%= old.equipment_type || '' %>" required />

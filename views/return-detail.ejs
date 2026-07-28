@@ -4,6 +4,11 @@
   <h1><%= r.reference %></h1>
   <span class="status-pill big" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span>
   <a class="btn btn-secondary" href="/returns/<%= r.id %>/pdf">Download PDF Report</a>
+  <% if (r.status !== closedStatus) { %>
+    <form action="/returns/<%= r.id %>/archive" method="POST" class="inline-form">
+      <button type="submit" class="btn btn-secondary">Archive This Return</button>
+    </form>
+  <% } %>
 </div>
 
 <div class="grid-2">
@@ -22,6 +27,14 @@
     <p><strong>Model:</strong> <%= r.model %></p>
     <p><strong>Serial Number:</strong> <%= r.serial_number %></p>
   </div>
+</div>
+
+<div class="card">
+  <h2>Collection Details</h2>
+  <p><strong>Address:</strong> <%= r.collection_address %></p>
+  <p><strong>Premises Type:</strong> <%= r.premises_type %></p>
+  <p><strong>Open Hours:</strong> <%= r.collection_hours %></p>
+  <p><strong>Courier Contact Number:</strong> <%= r.courier_contact_number %></p>
 </div>
 
 <div class="card">
