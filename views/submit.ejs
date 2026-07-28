@@ -56,6 +56,33 @@
     <textarea name="fault_description" rows="5" required><%= old.fault_description || '' %></textarea>
   </label>
 
+  <h2>Installation Details (if known)</h2>
+  <label>Application Type
+    <select name="insp_application_type">
+      <option value="">-- Select --</option>
+      <% APPLICATION_TYPES.forEach(o => { %>
+        <option value="<%= o %>" <%= old.insp_application_type === o ? 'selected' : '' %>><%= o %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Door / Product Type
+    <select name="insp_product_type">
+      <option value="">-- Select --</option>
+      <% PRODUCT_TYPES.forEach(o => { %>
+        <option value="<%= o %>" <%= old.insp_product_type === o ? 'selected' : '' %>><%= o %></option>
+      <% }) %>
+    </select>
+  </label>
+  <label>Dimensions
+    <input type="text" name="insp_dimensions" value="<%= old.insp_dimensions || '' %>" placeholder="e.g. 4m x 2m" />
+  </label>
+  <label>Weight
+    <input type="text" name="insp_weight" value="<%= old.insp_weight || '' %>" placeholder="e.g. 120kg" />
+  </label>
+  <label>Installation Date
+    <input type="date" name="insp_install_date" value="<%= old.insp_install_date || '' %>" />
+  </label>
+
   <h2>Photos / Videos (optional)</h2>
   <label class="full">Attach photos or videos of the fault
     <input type="file" name="files" multiple accept="image/*,video/*" />
