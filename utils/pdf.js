@@ -53,6 +53,16 @@ function generateReturnPdf(returnRecord, statusHistory, res) {
     ['Courier contact number', returnRecord.courier_contact_number]
   ]);
 
+  if (returnRecord.insp_application_type || returnRecord.insp_product_type || returnRecord.insp_dimensions || returnRecord.insp_weight || returnRecord.insp_install_date) {
+    section(doc, 'Installation Details', [
+      ['Application type', returnRecord.insp_application_type],
+      ['Door / product type', returnRecord.insp_product_type],
+      ['Dimensions', returnRecord.insp_dimensions],
+      ['Weight', returnRecord.insp_weight],
+      ['Installation date', returnRecord.insp_install_date]
+    ]);
+  }
+
   section(doc, 'Fault Description', [[null, returnRecord.fault_description]]);
 
   if (returnRecord.staff_notes) {
