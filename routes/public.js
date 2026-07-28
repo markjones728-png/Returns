@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
 const { db, nextReference } = require('../db');
 const { APPLICATION_TYPES, PRODUCT_TYPES } = require('../utils/constants');
 const { upload } = require('../utils/upload');
-const { saveFilesToDisk } = require('../utils/files');
+const { saveFilesToDisk, filePath } = require('../utils/files');
 const { sendReturnSubmittedEmail } = require('../utils/email');
+const { generateCustomerReturnPdf } = require('../utils/pdf');
 
 router.get('/', (req, res) => {
   res.render('home');
@@ -89,7 +91,51 @@ router.post('/track', (req, res) => {
     'SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC'
   ).all(returnRow.id);
 
-  res.render('track', { error: null, result: { returnRow, history } });
+  // Only general photos/videos - the Item Received Condition uploads stay
+  // internal/staff-only, same as on the staff-side report.
+  const files = db.prepare(
+    `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video') ORDER BY uploaded_at ASC`
+  ).all(returnRow.id);
+
+  res.render('track', { error: null, result: { returnRow, history, files } });
+});
+
+// Public: same reference+email check as the lookup above, then stream the
+// customer-safe PDF report (no login - this app has no customer accounts).
+router.get('/track/pdf', (req, res) => {
+  const { reference, email } = req.query;
+  const returnRow = db.prepare(
+    'SELECT * FROM returns WHERE reference = ? AND email = ?'
+  ).get((reference || '').trim(), (email || '').trim());
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const history = db.prepare(
+    'SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC'
+  ).all(returnRow.id);
+
+  generateCustomerReturnPdf(returnRow, history, res);
+});
+
+// Public: serve a single general photo/video, gated by the same
+// reference+email check. Item Received Condition uploads are excluded by
+// the kind filter, so they're never reachable through this route.
+router.get('/track/files/:filename', (req, res) => {
+  const { reference, email } = req.query;
+  const returnRow = db.prepare(
+    'SELECT * FROM returns WHERE reference = ? AND email = ?'
+  ).get((reference || '').trim(), (email || '').trim());
+  if (!returnRow) return res.status(404).send('Not found.');
+
+  const file = db.prepare(
+    `SELECT * FROM return_files WHERE return_id = ? AND filename = ? AND kind IN ('photo', 'video')`
+  ).get(returnRow.id, req.params.filename);
+  if (!file) return res.status(404).send('Not found.');
+
+  const p = filePath(returnRow.reference, file.filename);
+  if (!fs.existsSync(p)) return res.status(404).send('File missing.');
+
+  res.setHeader('Content-Type', file.mime_type);
+  res.sendFile(p);
 });
 
 module.exports = router;
