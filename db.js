@@ -94,6 +94,34 @@ ensureColumn('returns', 'collection_hours', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'premises_type', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'courier_contact_number', "TEXT NOT NULL DEFAULT ''");
 
+// --- Roger Technology "Request for Authorisation to Return Product for   ---
+// --- Inspection" fields, filled in by the returns engineer in two       ---
+// --- stages: on receipt/inspection, and after testing.                  ---
+ensureColumn('returns', 'insp_application_type', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_product_type', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_dimensions', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_weight', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_install_date', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_product_code', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_quantity', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_plate_p_code', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_plate_voltage', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_plate_batch', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_plate_in', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_plate_pm', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_guarantee_status', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_problem_by_client', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_problem_by_dealer', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_action_suggested', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_repairable', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_request_type', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_completed_by', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_completed_at', "TEXT");
+ensureColumn('returns', 'test_result', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'test_notes', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'test_completed_by', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'test_completed_at', "TEXT");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
