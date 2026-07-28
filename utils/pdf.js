@@ -241,7 +241,3 @@ function section(doc, title, rows) {
 }
 
 module.exports = { generateReturnPdf, generateReturnPdfBuffer };
-  doc.moveDown();
-}
-
-module.exports = { generateReturnPdf, generateReturnPdfBuffer };
