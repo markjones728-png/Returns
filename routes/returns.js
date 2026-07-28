@@ -332,6 +332,22 @@ router.post('/returns/:id/files', (req, res, next) => {
   res.redirect(`/returns/${returnRow.id}`);
 });
 
+// --- Staff: add/edit a note against a single uploaded photo/video ---
+router.post('/returns/:id/files/:fileId/caption', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const file = db.prepare('SELECT * FROM return_files WHERE id = ? AND return_id = ?')
+    .get(req.params.fileId, returnRow.id);
+  if (!file) return res.status(404).send('File not found.');
+
+  db.prepare('UPDATE return_files SET caption = ? WHERE id = ?')
+    .run((req.body.caption || '').trim(), file.id);
+
+  const anchor = req.body.redirect_anchor ? `#${req.body.redirect_anchor}` : '';
+  res.redirect(`/returns/${returnRow.id}${anchor}`);
+});
+
 router.get('/returns/:id/pdf', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
