@@ -1,4 +1,3 @@
-js
 // Ordered list of statuses in the returns workflow.
 // The dashboard treats everything except the final status as "live"
 // and the final status as "archived".
