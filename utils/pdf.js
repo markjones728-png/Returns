@@ -1,15 +1,6 @@
 const PDFDocument = require('pdfkit');
 
-function generateReturnPdf(returnRecord, statusHistory, res) {
-  const doc = new PDFDocument({ margin: 50 });
-
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader(
-    'Content-Disposition',
-    `attachment; filename="${returnRecord.reference}-report.pdf"`
-  );
-  doc.pipe(res);
-
+function buildReturnPdfDoc(doc, returnRecord, statusHistory) {
   // Header
   doc
     .fontSize(20)
@@ -65,6 +56,13 @@ function generateReturnPdf(returnRecord, statusHistory, res) {
 
   section(doc, 'Fault Description', [[null, returnRecord.fault_description]]);
 
+  if (returnRecord.manufacturer_rma_number || returnRecord.rta_rt_number) {
+    section(doc, 'Reference Numbers', [
+      ['Manufacturer RMA number', returnRecord.manufacturer_rma_number],
+      ['RTA RT number', returnRecord.rta_rt_number]
+    ].filter(([, value]) => value));
+  }
+
   if (returnRecord.staff_notes) {
     section(doc, 'Staff Notes', [[null, returnRecord.staff_notes]]);
   }
@@ -87,8 +85,40 @@ function generateReturnPdf(returnRecord, statusHistory, res) {
     .text('This report was generated automatically by the Roger Technology Returns Portal.', {
       align: 'center'
     });
+}
+
+// Streams the PDF straight to an HTTP response (used by the "Download PDF
+// Report" button).
+function generateReturnPdf(returnRecord, statusHistory, res) {
+  const doc = new PDFDocument({ margin: 50 });
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${returnRecord.reference}-report.pdf"`
+  );
+  doc.pipe(res);
+
+  buildReturnPdfDoc(doc, returnRecord, statusHistory);
 
   doc.end();
+}
+
+// Builds the same PDF in memory and resolves a Buffer (used to attach it to
+// the "Email Report to Customer" email).
+function generateReturnPdfBuffer(returnRecord, statusHistory) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 50 });
+    const chunks = [];
+
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    buildReturnPdfDoc(doc, returnRecord, statusHistory);
+
+    doc.end();
+  });
 }
 
 function section(doc, title, rows) {
@@ -105,4 +135,4 @@ function section(doc, title, rows) {
   doc.moveDown();
 }
 
-module.exports = { generateReturnPdf };
+module.exports = { generateReturnPdf, generateReturnPdfBuffer };
