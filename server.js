@@ -8,8 +8,14 @@ require('./db'); // initialises schema + seeds default admin
 const publicRoutes = require('./routes/public');
 const { router: authRoutes } = require('./routes/auth');
 const returnsRoutes = require('./routes/returns');
+const inviteRoutes = require('./routes/invite');
 
 const app = express();
+
+// Render (and most hosts) put the app behind a proxy - trust it so
+// req.protocol / req.secure reflect the real https:// scheme rather than
+// the internal http:// connection. Needed so invite links etc. use https.
+app.set('trust proxy', 1);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -35,6 +41,7 @@ app.use((req, res, next) => {
 
 app.use('/', publicRoutes);
 app.use('/', authRoutes);
+app.use('/', inviteRoutes);
 app.use('/', returnsRoutes);
 
 app.use((req, res) => {

@@ -65,6 +65,18 @@ db.exec(`
     changed_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (return_id) REFERENCES returns(id)
   );
+
+  CREATE TABLE IF NOT EXISTS invites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'staff',
+    token TEXT UNIQUE NOT NULL,
+    invited_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    accepted_at TEXT
+  );
 `);
 
 // --- Lightweight migrations: add any columns that don't exist yet on an  ---
