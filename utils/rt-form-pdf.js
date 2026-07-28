@@ -61,7 +61,7 @@ function generateRtAuthorisationPdf(r, res) {
     ['Product code', r.insp_product_code],
     ['Serial number', r.serial_number],
     ['Quantity', r.insp_quantity],
-    ['Guarantee status', r.insp_guarantee_status]
+   ['Warranty status', r.insp_guarantee_status]
   ]);
 
   section(doc, 'Nameplate Data', [
