@@ -1,0 +1,27 @@
+<%- include('partials/header', { title: 'Edit Staff Member' }) %>
+
+<h1>Edit Staff Member</h1>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<form action="/users/<%= editUser.id %>/edit" method="POST" class="card form-grid">
+  <label>Full Name
+    <input type="text" name="name" value="<%= editUser.name %>" required />
+  </label>
+  <label>Username
+    <input type="text" name="username" value="<%= editUser.username %>" required />
+  </label>
+  <label>Role
+    <select name="role">
+      <option value="staff" <%= editUser.role === 'staff' ? 'selected' : '' %>>Staff</option>
+      <option value="admin" <%= editUser.role === 'admin' ? 'selected' : '' %>>Admin</option>
+    </select>
+  </label>
+  <label>Set New Password (optional)
+    <input type="password" name="new_password" minlength="8" placeholder="Leave blank to keep their current password" />
+  </label>
+  <button type="submit" class="btn btn-primary full">Save Changes</button>
+</form>
+
+<p><a href="/users">&larr; Back to Staff Accounts</a></p>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,28 @@
+<%- include('partials/header', { title: 'Accept Invite' }) %>
+
+<h1>Join the Returns Portal</h1>
+
+<% if (error) { %>
+  <div class="alert alert-error"><%= error %></div>
+  <% if (!invite) { %><p><a href="/login">Go to staff login</a></p><% } %>
+<% } %>
+
+<% if (invite) { %>
+  <p class="muted">You've been invited as <strong><%= invite.name %></strong> (<%= invite.email %>) with <strong><%= invite.role %></strong> access. Choose a username and password to finish setting up your account.</p>
+
+  <form action="/accept-invite/<%= invite.token %>" method="POST" class="card form-grid">
+    <label>Choose a Username *
+      <input type="text" name="username" value="<%= old.username || '' %>" required />
+    </label>
+    <label></label>
+    <label>Password *
+      <input type="password" name="password" required minlength="8" />
+    </label>
+    <label>Confirm Password *
+      <input type="password" name="confirm_password" required minlength="8" />
+    </label>
+    <button type="submit" class="btn btn-primary full">Create My Account</button>
+  </form>
+<% } %>
+
+<%- include('partials/footer') %>
