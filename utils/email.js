@@ -64,6 +64,19 @@ async function sendStatusUpdateEmail(returnRecord) {
   return sendMail({ to: returnRecord.email, subject, html });
 }
 
+async function sendStaffInviteEmail({ email, name, invitedBy, acceptUrl }) {
+  const subject = `You've been invited to the Returns Portal`;
+  const html = `
+    <p>Hi ${escapeHtml(name)},</p>
+    <p>${escapeHtml(invitedBy)} has invited you to join the RT Automation Returns Portal as a staff member.</p>
+    <p><a href="${acceptUrl}" style="display:inline-block;padding:10px 20px;background:#0284c7;color:#fff;text-decoration:none;border-radius:6px;">Accept invite &amp; set up your account</a></p>
+    <p>Or copy this link into your browser:<br/>${acceptUrl}</p>
+    <p>This invite link expires in 7 days.</p>
+    <p>Kind regards,<br/>Returns Team</p>
+  `;
+  return sendMail({ to: email, subject, html });
+}
+
 function escapeHtml(str = '') {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -72,4 +85,4 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail };
+module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendStaffInviteEmail };

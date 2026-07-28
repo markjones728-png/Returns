@@ -46,6 +46,13 @@ function generateReturnPdf(returnRecord, statusHistory, res) {
     ['Serial number', returnRecord.serial_number]
   ]);
 
+  section(doc, 'Collection Details', [
+    ['Address', returnRecord.collection_address],
+    ['Premises type', returnRecord.premises_type],
+    ['Open hours', returnRecord.collection_hours],
+    ['Courier contact number', returnRecord.courier_contact_number]
+  ]);
+
   section(doc, 'Fault Description', [[null, returnRecord.fault_description]]);
 
   if (returnRecord.staff_notes) {

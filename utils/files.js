@@ -2,7 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const UPLOAD_ROOT = path.join(__dirname, '..', 'uploads');
+// See db.js for PERSIST_DIR explanation - keeps uploads on the same
+// persistent disk as the database in production.
+const PERSIST_DIR = process.env.PERSIST_DIR || path.join(__dirname, '..');
+const UPLOAD_ROOT = path.join(PERSIST_DIR, 'uploads');
 
 function saveFilesToDisk(reference, files) {
   const dir = path.join(UPLOAD_ROOT, reference);
