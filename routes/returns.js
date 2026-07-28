@@ -7,7 +7,7 @@ const { db, nextReference } = require('../db');
 const {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
   APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
+  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
@@ -116,7 +116,7 @@ router.get('/returns/:id', (req, res) => {
     statusColors: STATUS_COLORS,
     closedStatus: CLOSED_STATUS,
     APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-    REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS,
+    REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
     user: req.session.user
   });
 });
@@ -158,6 +158,41 @@ router.post('/returns/:id/inspection', (req, res) => {
   );
 
   res.redirect(`/returns/${returnRow.id}#inspection`);
+});
+
+// --- Staff: item received condition (filled in when the item first     ---
+// --- arrives - photos, whether all parts are present, and notes.       ---
+// --- Internal/system use only - never included on anything emailed to  ---
+// --- the customer (see utils/pdf.js).                                  ---
+router.post('/returns/:id/received', (req, res, next) => {
+  upload.array('files', 10)(req, res, (err) => {
+    if (err) return res.status(400).send(err.message);
+    next();
+  });
+}, (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const { received_parts_status, received_notes } = req.body;
+
+  db.prepare(`
+    UPDATE returns SET
+      received_parts_status = ?, received_notes = ?,
+      received_completed_by = ?, received_completed_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(received_parts_status || '', received_notes || '', req.session.user.name, returnRow.id);
+
+  if (req.files && req.files.length) {
+    const saved = saveFilesToDisk(returnRow.reference, req.files, 'received');
+    const stmt = db.prepare(`
+      INSERT INTO return_files (return_id, filename, original_name, mime_type, kind, uploaded_by)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    saved.forEach((f) => stmt.run(returnRow.id, f.filename, f.original_name, f.mime_type, f.kind, req.session.user.name));
+  }
+
+  res.redirect(`/returns/${returnRow.id}#received`);
 });
 
 // --- Staff: testing results (filled in after tests are carried out) ---
