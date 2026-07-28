@@ -5,6 +5,9 @@
   <span class="status-pill big" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span>
   <a class="btn btn-secondary" href="/returns/<%= r.id %>/pdf">Download PDF Report</a>
   <a class="btn btn-secondary" href="/returns/<%= r.id %>/rt-form.pdf">Download Roger Technology RMA Form</a>
+  <form action="/returns/<%= r.id %>/send-report" method="POST" class="inline-form">
+    <button type="submit" class="btn btn-secondary">Email Report to Customer</button>
+  </form>
   <% if (r.status !== closedStatus) { %>
     <form action="/returns/<%= r.id %>/archive" method="POST" class="inline-form">
       <button type="submit" class="btn btn-secondary">Archive This Return</button>
@@ -27,6 +30,12 @@
     <p><strong>Make:</strong> <%= r.make %></p>
     <p><strong>Model:</strong> <%= r.model %></p>
     <p><strong>Serial Number:</strong> <%= r.serial_number %></p>
+    <% if (r.manufacturer_rma_number) { %>
+      <p><strong>Manufacturer RMA Number:</strong> <%= r.manufacturer_rma_number %></p>
+    <% } %>
+    <% if (r.rta_rt_number) { %>
+      <p><strong>RTA RT Number:</strong> <%= r.rta_rt_number %></p>
+    <% } %>
   </div>
 </div>
 
@@ -189,11 +198,17 @@
   <h2>Update Status</h2>
   <form action="/returns/<%= r.id %>/status" method="POST" class="form-grid">
     <label>New Status
-      <select name="status" required>
+      <select name="status" id="statusSelect" required>
         <% STATUSES.forEach(s => { %>
           <option value="<%= s %>" <%= s === r.status ? 'selected' : '' %>><%= s %></option>
         <% }) %>
       </select>
+    </label>
+    <label class="full" id="rmaNumberField" style="display:none;">Manufacturer RMA Number
+      <input type="text" name="manufacturer_rma_number" id="rmaNumberInput" value="<%= r.manufacturer_rma_number %>" placeholder="e.g. RMA-12345" />
+    </label>
+    <label class="full" id="rtaNumberField" style="display:none;">RTA RT Number
+      <input type="text" name="rta_rt_number" id="rtaNumberInput" value="<%= r.rta_rt_number %>" placeholder="e.g. RT-12345" />
     </label>
     <label class="full">Note (optional)
       <input type="text" name="note" placeholder="e.g. Collected by XYZ Couriers, tracking 12345" />
@@ -202,6 +217,22 @@
     <button type="submit" class="btn btn-primary full">Update Status</button>
   </form>
 </div>
+
+<script>
+  (function () {
+    var rmaStatuses = <%- JSON.stringify(STATUSES_NEEDING_RMA_NUMBER) %>;
+    var rtaStatuses = <%- JSON.stringify(STATUSES_NEEDING_RTA_NUMBER) %>;
+    var select = document.getElementById('statusSelect');
+    var rmaField = document.getElementById('rmaNumberField');
+    var rtaField = document.getElementById('rtaNumberField');
+    function updateFields() {
+      rmaField.style.display = rmaStatuses.indexOf(select.value) !== -1 ? '' : 'none';
+      rtaField.style.display = rtaStatuses.indexOf(select.value) !== -1 ? '' : 'none';
+    }
+    select.addEventListener('change', updateFields);
+    updateFields();
+  })();
+</script>
 
 <div class="card">
   <h2>Staff Notes</h2>
@@ -244,7 +275,5 @@
     <% }) %>
   </ul>
 </div>
-
-<%- include('partials/footer') %>
 
 <%- include('partials/footer') %>
