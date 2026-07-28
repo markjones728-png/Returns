@@ -106,6 +106,12 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
       <strong>Courier contact number:</strong> ${escapeHtml(returnRecord.courier_contact_number)}
     </p>
 
+    <h3>Item Received Condition</h3>
+    <p>
+      <strong>Parts status:</strong> ${escapeHtml(returnRecord.received_parts_status)}<br/>
+      <strong>Notes:</strong> ${escapeHtml(returnRecord.received_notes)}
+    </p>
+
     <h3>Installation Details</h3>
     <p>
       <strong>Application type:</strong> ${escapeHtml(returnRecord.insp_application_type)}<br/>
