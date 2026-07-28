@@ -7,7 +7,10 @@ const crypto = require('crypto');
 const PERSIST_DIR = process.env.PERSIST_DIR || path.join(__dirname, '..');
 const UPLOAD_ROOT = path.join(PERSIST_DIR, 'uploads');
 
-function saveFilesToDisk(reference, files) {
+// kindPrefix lets a caller tag uploads as belonging to a distinct group
+// (e.g. "received" for the received-condition photos) so they can be
+// filtered/displayed separately from general photos/videos elsewhere.
+function saveFilesToDisk(reference, files, kindPrefix) {
   const dir = path.join(UPLOAD_ROOT, reference);
   fs.mkdirSync(dir, { recursive: true });
 
@@ -15,11 +18,12 @@ function saveFilesToDisk(reference, files) {
     const ext = path.extname(file.originalname) || '';
     const safeName = `${crypto.randomBytes(8).toString('hex')}${ext}`;
     fs.writeFileSync(path.join(dir, safeName), file.buffer);
+    const baseKind = file.mimetype.startsWith('video/') ? 'video' : 'photo';
     return {
       filename: safeName,
       original_name: file.originalname,
       mime_type: file.mimetype,
-      kind: file.mimetype.startsWith('video/') ? 'video' : 'photo'
+      kind: kindPrefix ? `${kindPrefix}_${baseKind}` : baseKind
     };
   });
 }
