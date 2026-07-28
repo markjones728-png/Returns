@@ -336,8 +336,10 @@ router.get('/returns/:id/pdf', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
   const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
+  const files = db.prepare('SELECT * FROM return_files WHERE return_id = ? ORDER BY uploaded_at ASC').all(returnRow.id);
 
-  generateReturnPdf(returnRow, history, res);
+  generateReturnPdf(returnRow, history, files, res);
+});
 });
 
 router.get('/files/:returnId/:filename', (req, res) => {
