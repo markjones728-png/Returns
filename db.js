@@ -121,6 +121,8 @@ ensureColumn('returns', 'test_result', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'test_notes', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'test_completed_by', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'test_completed_at', "TEXT");
+ensureColumn('returns', 'manufacturer_rma_number', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rta_rt_number', "TEXT NOT NULL DEFAULT ''");
 
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
