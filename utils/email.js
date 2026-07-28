@@ -17,7 +17,7 @@ function buildTransport() {
 
 const transporter = buildTransport();
 
-async function sendMail({ to, subject, html }) {
+async function sendMail({ to, subject, html, attachments }) {
   const from = process.env.MAIL_FROM || '"Roger Technology Returns" <returns@example.com>';
 
   if (!transporter) {
@@ -25,12 +25,15 @@ async function sendMail({ to, subject, html }) {
     console.log('To:', to);
     console.log('Subject:', subject);
     console.log('Body:', html);
+    if (attachments && attachments.length) {
+      console.log('Attachments:', attachments.map((a) => a.filename).join(', '));
+    }
     console.log('----------------------------------------------------');
     return { skipped: true };
   }
 
   try {
-    return await transporter.sendMail({ from, to, subject, html });
+    return await transporter.sendMail({ from, to, subject, html, attachments });
   } catch (err) {
     console.error('Failed to send email:', err.message);
     return { error: err.message };
@@ -120,6 +123,8 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
       <strong>Action suggested:</strong> ${escapeHtml(returnRecord.insp_action_suggested)}<br/>
       <strong>Repairable:</strong> ${escapeHtml(returnRecord.insp_repairable)}<br/>
       <strong>Request type:</strong> ${escapeHtml(returnRecord.insp_request_type)}<br/>
+      <strong>Manufacturer RMA number:</strong> ${escapeHtml(returnRecord.manufacturer_rma_number)}<br/>
+      <strong>RTA RT number:</strong> ${escapeHtml(returnRecord.rta_rt_number)}<br/>
       <strong>Test result:</strong> ${escapeHtml(returnRecord.test_result)}<br/>
       <strong>Test notes:</strong> ${escapeHtml(returnRecord.test_notes)}
     </p>
@@ -131,6 +136,32 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
   `;
 
   return sendMail({ to: notifyTo, subject, html });
+}
+
+// Emails the customer their PDF return report as an attachment - triggered
+// by the "Email Report to Customer" button, which also moves the return to
+// the "Report Sent" status.
+async function sendReturnReportEmail(returnRecord, pdfBuffer) {
+  const subject = `Your report for return ${returnRecord.reference}`;
+  const html = `
+    <p>Dear ${escapeHtml(returnRecord.contact_name)},</p>
+    <p>Please find attached the report for your return <strong>${escapeHtml(returnRecord.reference)}</strong>
+    (${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)}).</p>
+    <p>Please quote your reference number in any correspondence.</p>
+    <p>Kind regards,<br/>Returns Team</p>
+  `;
+  return sendMail({
+    to: returnRecord.email,
+    subject,
+    html,
+    attachments: [
+      {
+        filename: `${returnRecord.reference}-report.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  });
 }
 
 async function sendStaffInviteEmail({ email, name, invitedBy, acceptUrl }) {
@@ -154,4 +185,4 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendReturnCompletedEmail, sendStaffInviteEmail };
+module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail };
