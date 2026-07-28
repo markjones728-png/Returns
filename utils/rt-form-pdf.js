@@ -1,4 +1,3 @@
-js
 const PDFDocument = require('pdfkit');
 const { DEALER_DETAILS } = require('./constants');
 
