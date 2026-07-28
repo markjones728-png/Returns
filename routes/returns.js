@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const { db, nextReference } = require('../db');
 const {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
-  APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
+  APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
   REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
@@ -115,7 +115,7 @@ router.get('/returns/:id', (req, res) => {
     r: returnRow, files, history, STATUSES, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
     statusColors: STATUS_COLORS,
     closedStatus: CLOSED_STATUS,
-    APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
+    APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
     REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS,
     user: req.session.user
   });
