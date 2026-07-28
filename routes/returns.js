@@ -340,7 +340,6 @@ router.get('/returns/:id/pdf', (req, res) => {
 
   generateReturnPdf(returnRow, history, files, res);
 });
-});
 
 router.get('/files/:returnId/:filename', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.returnId);
