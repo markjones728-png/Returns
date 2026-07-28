@@ -4,11 +4,17 @@ const fs = require('fs');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { db, nextReference } = require('../db');
-const { STATUSES, CLOSED_STATUS, STATUS_COLORS } = require('../utils/constants');
+const {
+  STATUSES, CLOSED_STATUS, STATUS_COLORS,
+  APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
+  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
+} = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
 const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendStaffInviteEmail } = require('../utils/email');
 const { generateReturnPdf } = require('../utils/pdf');
+const { generateRtAuthorisationPdf } = require('../utils/rt-form-pdf');
+const { streamBackupZip } = require('../utils/backup');
 const { requireAuth, requireAdmin } = require('./auth');
 
 router.use(requireAuth);
@@ -99,8 +105,75 @@ router.get('/returns/:id', (req, res) => {
     r: returnRow, files, history, STATUSES,
     statusColors: STATUS_COLORS,
     closedStatus: CLOSED_STATUS,
+    APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
+    REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS,
     user: req.session.user
   });
+});
+
+// --- Staff: Roger Technology inspection form (filled in on receipt) ---
+router.post('/returns/:id/inspection', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const {
+    insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
+    insp_product_code, insp_quantity,
+    insp_plate_p_code, insp_plate_voltage, insp_plate_batch, insp_plate_in, insp_plate_pm,
+    insp_guarantee_status,
+    insp_problem_by_client, insp_problem_by_dealer, insp_action_suggested,
+    insp_repairable, insp_request_type
+  } = req.body;
+
+  db.prepare(`
+    UPDATE returns SET
+      insp_application_type = ?, insp_product_type = ?, insp_dimensions = ?, insp_weight = ?, insp_install_date = ?,
+      insp_product_code = ?, insp_quantity = ?,
+      insp_plate_p_code = ?, insp_plate_voltage = ?, insp_plate_batch = ?, insp_plate_in = ?, insp_plate_pm = ?,
+      insp_guarantee_status = ?,
+      insp_problem_by_client = ?, insp_problem_by_dealer = ?, insp_action_suggested = ?,
+      insp_repairable = ?, insp_request_type = ?,
+      insp_completed_by = ?, insp_completed_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(
+    insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || '',
+    insp_product_code || '', insp_quantity || '',
+    insp_plate_p_code || '', insp_plate_voltage || '', insp_plate_batch || '', insp_plate_in || '', insp_plate_pm || '',
+    insp_guarantee_status || '',
+    insp_problem_by_client || '', insp_problem_by_dealer || '', insp_action_suggested || '',
+    insp_repairable || '', insp_request_type || '',
+    req.session.user.name,
+    returnRow.id
+  );
+
+  res.redirect(`/returns/${returnRow.id}#inspection`);
+});
+
+// --- Staff: testing results (filled in after tests are carried out) ---
+router.post('/returns/:id/test', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const { test_result, test_notes } = req.body;
+
+  db.prepare(`
+    UPDATE returns SET
+      test_result = ?, test_notes = ?,
+      test_completed_by = ?, test_completed_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(test_result || '', test_notes || '', req.session.user.name, returnRow.id);
+
+  res.redirect(`/returns/${returnRow.id}#testing`);
+});
+
+// --- Staff: download a filled copy of Roger Technology's own RMA form ---
+router.get('/returns/:id/rt-form.pdf', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  generateRtAuthorisationPdf(returnRow, res);
 });
 
 // Quick one-click archive/reopen actions (shortcuts for the status form above)
@@ -214,6 +287,15 @@ router.post('/account/password', (req, res) => {
   const hash = bcrypt.hashSync(new_password, 10);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, dbUser.id);
   res.render('account', { user: req.session.user, error: null, success: 'Password updated.' });
+});
+
+// --- Admin: backups ---
+router.get('/backup', requireAdmin, (req, res) => {
+  res.render('backup', { user: req.session.user });
+});
+
+router.get('/backup/download', requireAdmin, (req, res) => {
+  streamBackupZip(res);
 });
 
 // --- Admin: manage staff users ---
