@@ -112,10 +112,10 @@
     <label>Quantity
       <input type="text" name="insp_quantity" value="<%= r.insp_quantity %>" />
     </label>
-    <label>Guarantee Status
+  <label>Warranty Status
       <select name="insp_guarantee_status">
         <option value="">-- Select --</option>
-        <% GUARANTEE_STATUSES.forEach(o => { %>
+        <% WARRANTY_STATUSES.forEach(o => { %>
           <option value="<%= o %>" <%= r.insp_guarantee_status === o ? 'selected' : '' %>><%= o %></option>
         <% }) %>
       </select>
