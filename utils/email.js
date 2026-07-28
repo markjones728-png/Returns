@@ -117,7 +117,7 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
 
     <h3>Inspection &amp; Testing</h3>
     <p>
-      <strong>Guarantee status:</strong> ${escapeHtml(returnRecord.insp_guarantee_status)}<br/>
+      <strong>Warranty status:</strong> ${escapeHtml(returnRecord.insp_guarantee_status)}<br/>
       <strong>Problem identified by client:</strong> ${escapeHtml(returnRecord.insp_problem_by_client)}<br/>
       <strong>Problem identified by dealer/engineer:</strong> ${escapeHtml(returnRecord.insp_problem_by_dealer)}<br/>
       <strong>Action suggested:</strong> ${escapeHtml(returnRecord.insp_action_suggested)}<br/>
