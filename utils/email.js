@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { DEALER_DETAILS } = require('./constants');
 
 function buildTransport() {
   if (!process.env.SMTP_HOST) {
@@ -64,6 +65,74 @@ async function sendStatusUpdateEmail(returnRecord) {
   return sendMail({ to: returnRecord.email, subject, html });
 }
 
+// Sent internally (not to the customer) once a return reaches "Return Closed",
+// so someone always gets a full record of the completed return by email -
+// a copy of everything captured, on top of what's stored in the app itself.
+async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
+  const notifyTo = process.env.RETURNS_NOTIFY_EMAIL || DEALER_DETAILS.email;
+  const subject = `Return closed: ${returnRecord.reference} - ${returnRecord.company_name}`;
+
+  const historyHtml = statusHistory
+    .map((h) => `<li>${escapeHtml(new Date(h.changed_at).toLocaleString('en-GB'))} — ${escapeHtml(h.status)}${h.note ? ` (${escapeHtml(h.note)})` : ''} [${escapeHtml(h.changed_by)}]</li>`)
+    .join('');
+
+  const html = `
+    <h2>Return Closed: ${escapeHtml(returnRecord.reference)}</h2>
+
+    <h3>Customer Details</h3>
+    <p>
+      <strong>Company:</strong> ${escapeHtml(returnRecord.company_name)}<br/>
+      <strong>Contact:</strong> ${escapeHtml(returnRecord.contact_name)}<br/>
+      <strong>Phone:</strong> ${escapeHtml(returnRecord.phone)}<br/>
+      <strong>Email:</strong> ${escapeHtml(returnRecord.email)}
+    </p>
+
+    <h3>Equipment Details</h3>
+    <p>
+      <strong>Type:</strong> ${escapeHtml(returnRecord.equipment_type)}<br/>
+      <strong>Make / Model:</strong> ${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)}<br/>
+      <strong>Serial number:</strong> ${escapeHtml(returnRecord.serial_number)}<br/>
+      <strong>Fault reported:</strong> ${escapeHtml(returnRecord.fault_description)}
+    </p>
+
+    <h3>Collection Details</h3>
+    <p>
+      <strong>Address:</strong> ${escapeHtml(returnRecord.collection_address)}<br/>
+      <strong>Premises type:</strong> ${escapeHtml(returnRecord.premises_type)}<br/>
+      <strong>Open hours:</strong> ${escapeHtml(returnRecord.collection_hours)}<br/>
+      <strong>Courier contact number:</strong> ${escapeHtml(returnRecord.courier_contact_number)}
+    </p>
+
+    <h3>Installation Details</h3>
+    <p>
+      <strong>Application type:</strong> ${escapeHtml(returnRecord.insp_application_type)}<br/>
+      <strong>Door / product type:</strong> ${escapeHtml(returnRecord.insp_product_type)}<br/>
+      <strong>Dimensions:</strong> ${escapeHtml(returnRecord.insp_dimensions)}<br/>
+      <strong>Weight:</strong> ${escapeHtml(returnRecord.insp_weight)}<br/>
+      <strong>Installation date:</strong> ${escapeHtml(returnRecord.insp_install_date)}
+    </p>
+
+    <h3>Inspection &amp; Testing</h3>
+    <p>
+      <strong>Guarantee status:</strong> ${escapeHtml(returnRecord.insp_guarantee_status)}<br/>
+      <strong>Problem identified by client:</strong> ${escapeHtml(returnRecord.insp_problem_by_client)}<br/>
+      <strong>Problem identified by dealer/engineer:</strong> ${escapeHtml(returnRecord.insp_problem_by_dealer)}<br/>
+      <strong>Action suggested:</strong> ${escapeHtml(returnRecord.insp_action_suggested)}<br/>
+      <strong>Repairable:</strong> ${escapeHtml(returnRecord.insp_repairable)}<br/>
+      <strong>Request type:</strong> ${escapeHtml(returnRecord.insp_request_type)}<br/>
+      <strong>Test result:</strong> ${escapeHtml(returnRecord.test_result)}<br/>
+      <strong>Test notes:</strong> ${escapeHtml(returnRecord.test_notes)}
+    </p>
+
+    ${returnRecord.staff_notes ? `<h3>Staff Notes</h3><p>${escapeHtml(returnRecord.staff_notes)}</p>` : ''}
+
+    <h3>Status History</h3>
+    <ul>${historyHtml}</ul>
+  `;
+
+  return sendMail({ to: notifyTo, subject, html });
+}
+
 async function sendStaffInviteEmail({ email, name, invitedBy, acceptUrl }) {
   const subject = `You've been invited to the Returns Portal`;
   const html = `
@@ -85,4 +154,4 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendStaffInviteEmail };
+module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendReturnCompletedEmail, sendStaffInviteEmail };
