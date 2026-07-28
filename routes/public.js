@@ -23,19 +23,20 @@ router.post('/submit', (req, res, next) => {
 }, async (req, res) => {
   const {
     company_name, contact_name, phone, email,
+    collection_address, collection_hours, premises_type, courier_contact_number,
     equipment_type, make, model, serial_number, fault_description
   } = req.body;
 
-  if (!company_name || !contact_name || !phone || !email || !equipment_type || !make || !model || !serial_number || !fault_description) {
+  if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
     return res.render('submit', { error: 'Please fill in all required fields.', old: req.body });
   }
 
   const reference = nextReference();
 
   db.prepare(`
-    INSERT INTO returns (reference, company_name, contact_name, phone, email, equipment_type, make, model, serial_number, fault_description, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
-  `).run(reference, company_name, contact_name, phone, email, equipment_type, make, model, serial_number, fault_description);
+    INSERT INTO returns (reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number, equipment_type, make, model, serial_number, fault_description, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
+  `).run(reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number, equipment_type, make, model, serial_number, fault_description);
 
   const returnRow = db.prepare('SELECT * FROM returns WHERE reference = ?').get(reference);
 
