@@ -174,7 +174,8 @@ function addPhotosSection(doc, files, reference) {
       return; // skip unreadable/corrupt image rather than crash the whole report
     }
     doc.moveDown(0.2);
-    const label = f.kind === 'received_photo' ? `${f.original_name} (Item Received Condition)` : f.original_name;
+    let label = f.kind === 'received_photo' ? `${f.original_name} (Item Received Condition)` : f.original_name;
+    if (f.caption) label += ` — ${f.caption}`;
     doc.fontSize(9).fillColor('#64748b').text(label, { align: 'center' });
     doc.moveDown(0.8);
   });
@@ -183,7 +184,8 @@ function addPhotosSection(doc, files, reference) {
     doc.moveDown(0.3);
     doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
     videos.forEach((f) => {
-      const label = f.kind === 'received_video' ? `${f.original_name} (Item Received Condition)` : f.original_name;
+      let label = f.kind === 'received_video' ? `${f.original_name} (Item Received Condition)` : f.original_name;
+      if (f.caption) label += ` — ${f.caption}`;
       doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
     });
   }
@@ -203,6 +205,25 @@ function generateReturnPdf(returnRecord, statusHistory, files, res) {
   doc.pipe(res);
 
   buildReturnPdfDoc(doc, returnRecord, statusHistory, files, { internal: true });
+
+  doc.end();
+}
+
+// Streams the customer-facing copy straight to an HTTP response (used by the
+// public "Download PDF Report" link on the Track a Return page). Same
+// content as generateReturnPdfBuffer below, just streamed instead of
+// buffered - internal-only content is left out entirely.
+function generateCustomerReturnPdf(returnRecord, statusHistory, res) {
+  const doc = new PDFDocument({ margin: 50 });
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${returnRecord.reference}-report.pdf"`
+  );
+  doc.pipe(res);
+
+  buildReturnPdfDoc(doc, returnRecord, statusHistory, [], { internal: false });
 
   doc.end();
 }
@@ -240,4 +261,4 @@ function section(doc, title, rows) {
   doc.moveDown();
 }
 
-module.exports = { generateReturnPdf, generateReturnPdfBuffer };
+module.exports = { generateReturnPdf, generateReturnPdfBuffer, generateCustomerReturnPdf };
