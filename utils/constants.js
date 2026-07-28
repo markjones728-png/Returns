@@ -10,6 +10,7 @@ const STATUSES = [
   'Awaiting Inspection by Returns',
   'Inspected - Out Of Warranty',
   'Inspected - Damaged',
+  'Inspected - No Fault Found',
   'Inspected - Warranty Replacement Authorised (RTA)',
   'Inspected - Warranty Replacement Authorised',
   'Report Sent',
@@ -44,6 +45,7 @@ const STATUS_COLORS = {
   'Awaiting Inspection by Returns': '#c026d3',
   'Inspected - Out Of Warranty': '#ea580c',
   'Inspected - Damaged': '#b91c1c',
+  'Inspected - No Fault Found': '#65a30d',
   'Inspected - Warranty Replacement Authorised (RTA)': '#059669',
   'Inspected - Warranty Replacement Authorised': '#0d9488',
   'Report Sent': '#0891b2',
@@ -53,7 +55,7 @@ const STATUS_COLORS = {
 // --- Options for the Roger Technology inspection/test form ---
 const APPLICATION_TYPES = ['Residential', 'Commercial', 'Industrial', 'Other'];
 const PRODUCT_TYPES = ['Sliding Gate', 'Swing Gate', 'Barrier', 'Bollard', 'Garage Door', 'Industrial Door', 'Other'];
-const GUARANTEE_STATUSES = ['In Guarantee', 'Out of Guarantee', 'Unknown'];
+const WARRANTY_STATUSES = ['In Warranty', 'Out Warranty', 'Unknown'];
 const REPAIRABLE_OPTIONS = ['Repairable', 'Not Repairable', 'Unknown'];
 const REQUEST_TYPES = ['Return to Roger Technology for Inspection', 'Request for Quote Only'];
 const TEST_RESULTS = ['Pass', 'Fail', 'Partial / Further Work Needed'];
@@ -71,6 +73,6 @@ const DEALER_DETAILS = {
 
 module.exports = {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
-  APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
+  APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
   REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
 };
