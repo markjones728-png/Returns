@@ -11,7 +11,7 @@ const {
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
-const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendStaffInviteEmail } = require('../utils/email');
+const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendReturnCompletedEmail, sendStaffInviteEmail } = require('../utils/email');
 const { generateReturnPdf } = require('../utils/pdf');
 const { generateRtAuthorisationPdf } = require('../utils/rt-form-pdf');
 const { streamBackupZip } = require('../utils/backup');
@@ -47,31 +47,41 @@ router.get('/dashboard', (req, res) => {
 
 // --- Staff: log a new return on a customer's behalf (e.g. phoned in) ---
 router.get('/returns/new', (req, res) => {
-  res.render('return-new', { error: null, old: {}, user: req.session.user });
+  res.render('return-new', { error: null, old: {}, APPLICATION_TYPES, PRODUCT_TYPES, user: req.session.user });
 });
 
 router.post('/returns/new', (req, res, next) => {
   upload.array('files', 10)(req, res, (err) => {
-    if (err) return res.render('return-new', { error: err.message, old: req.body, user: req.session.user });
+    if (err) return res.render('return-new', { error: err.message, old: req.body, APPLICATION_TYPES, PRODUCT_TYPES, user: req.session.user });
     next();
   });
 }, async (req, res) => {
   const {
     company_name, contact_name, phone, email,
     collection_address, collection_hours, premises_type, courier_contact_number,
-    equipment_type, make, model, serial_number, fault_description
+    equipment_type, make, model, serial_number, fault_description,
+    insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date
   } = req.body;
 
   if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
-    return res.render('return-new', { error: 'Please fill in all required fields.', old: req.body, user: req.session.user });
+    return res.render('return-new', { error: 'Please fill in all required fields.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES, user: req.session.user });
   }
 
   const reference = nextReference();
 
   db.prepare(`
-    INSERT INTO returns (reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number, equipment_type, make, model, serial_number, fault_description, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
-  `).run(reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number, equipment_type, make, model, serial_number, fault_description);
+    INSERT INTO returns (
+      reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
+      equipment_type, make, model, serial_number, fault_description,
+      insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
+      status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
+  `).run(
+    reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
+    equipment_type, make, model, serial_number, fault_description,
+    insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || ''
+  );
 
   const returnRow = db.prepare('SELECT * FROM returns WHERE reference = ?').get(reference);
 
@@ -177,7 +187,7 @@ router.get('/returns/:id/rt-form.pdf', (req, res) => {
 });
 
 // Quick one-click archive/reopen actions (shortcuts for the status form above)
-router.post('/returns/:id/archive', (req, res) => {
+router.post('/returns/:id/archive', async (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
@@ -187,6 +197,10 @@ router.post('/returns/:id/archive', (req, res) => {
     VALUES (?, ?, ?, 'Archived by staff')
   `).run(returnRow.id, CLOSED_STATUS, req.session.user.name);
 
+  const updated = db.prepare('SELECT * FROM returns WHERE id = ?').get(returnRow.id);
+  const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
+  await sendReturnCompletedEmail(updated, history);
+
   res.redirect(`/returns/${returnRow.id}`);
 });
 
@@ -194,8 +208,10 @@ router.post('/returns/:id/status', async (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
-  const { status, note, notify } = req.body;
+  const { status, note } = req.body;
   if (!STATUSES.includes(status)) return res.status(400).send('Invalid status.');
+
+  const statusChanged = status !== returnRow.status;
 
   db.prepare(`UPDATE returns SET status = ?, updated_at = datetime('now') WHERE id = ?`).run(status, returnRow.id);
   db.prepare(`
@@ -203,9 +219,19 @@ router.post('/returns/:id/status', async (req, res) => {
     VALUES (?, ?, ?, ?)
   `).run(returnRow.id, status, req.session.user.name, note || '');
 
-  if (notify === 'on') {
-    const updated = db.prepare('SELECT * FROM returns WHERE id = ?').get(returnRow.id);
+  const updated = db.prepare('SELECT * FROM returns WHERE id = ?').get(returnRow.id);
+
+  // The customer is always emailed whenever the status actually changes, so
+  // they're kept up to date automatically without staff needing to remember.
+  if (statusChanged) {
     await sendStatusUpdateEmail(updated);
+  }
+
+  // When a return reaches "Return Closed", send the full record to the
+  // returns team's own inbox as well, so nothing is lost/forgotten.
+  if (status === CLOSED_STATUS) {
+    const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
+    await sendReturnCompletedEmail(updated, history);
   }
 
   res.redirect(`/returns/${returnRow.id}`);
