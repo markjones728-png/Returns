@@ -60,6 +60,10 @@ const REPAIRABLE_OPTIONS = ['Repairable', 'Not Repairable', 'Unknown'];
 const REQUEST_TYPES = ['Return to Roger Technology for Inspection', 'Request for Quote Only'];
 const TEST_RESULTS = ['Pass', 'Fail', 'Partial / Further Work Needed'];
 
+// Options for the "Received Condition" check done when the item first
+// arrives at the returns department - internal/staff use only, see below.
+const RECEIVED_PARTS_STATUSES = ['All Parts Present', 'Parts Missing'];
+
 // Access Control Ltd / RT Automation's own details, as they appear on the
 // Roger Technology "Request for Authorisation to Return Product for
 // Inspection" form's Dealer Details section. These are always the same for
@@ -74,5 +78,5 @@ const DEALER_DETAILS = {
 module.exports = {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
   APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
+  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS
 };
