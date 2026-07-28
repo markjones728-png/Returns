@@ -16,10 +16,12 @@
 </form>
 
 <% if (result) { %>
+  <% const pdfQs = `reference=${encodeURIComponent(result.returnRow.reference)}&email=${encodeURIComponent(result.returnRow.email)}`; %>
   <div class="card">
     <h2><%= result.returnRow.reference %> &mdash; <span class="status-pill" style="background:#0284c7"><%= result.returnRow.status %></span></h2>
     <p><strong>Equipment:</strong> <%= result.returnRow.make %> <%= result.returnRow.model %> (Serial: <%= result.returnRow.serial_number %>)</p>
     <p><strong>Fault reported:</strong> <%= result.returnRow.fault_description %></p>
+    <a class="btn btn-secondary" href="/track/pdf?<%= pdfQs %>">Download PDF Report</a>
 
     <h3>Status History</h3>
     <ul class="timeline">
@@ -27,6 +29,27 @@
         <li><strong><%= h.status %></strong> &mdash; <%= new Date(h.changed_at).toLocaleString('en-GB') %><% if (h.note) { %> <em>(<%= h.note %>)</em><% } %></li>
       <% }) %>
     </ul>
+
+    <h3>Photos &amp; Videos</h3>
+    <div class="media-grid">
+      <% result.files.forEach(f => { %>
+        <div class="media-item">
+          <% if (f.kind === 'photo') { %>
+            <a href="/track/files/<%= f.filename %>?<%= pdfQs %>" target="_blank">
+              <img src="/track/files/<%= f.filename %>?<%= pdfQs %>" alt="<%= f.original_name %>" />
+            </a>
+          <% } else { %>
+            <video controls src="/track/files/<%= f.filename %>?<%= pdfQs %>"></video>
+          <% } %>
+          <div class="media-caption"><%= f.original_name %></div>
+        </div>
+      <% }) %>
+      <% if (result.files.length === 0) { %><p class="muted">No photos or videos yet.</p><% } %>
+    </div>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
   </div>
 <% } %>
 
