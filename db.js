@@ -124,6 +124,15 @@ ensureColumn('returns', 'test_completed_at', "TEXT");
 ensureColumn('returns', 'manufacturer_rma_number', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'rta_rt_number', "TEXT NOT NULL DEFAULT ''");
 
+// --- "Received Condition" check - filled in when the item first arrives  ---
+// --- at the returns department. Internal/staff use only - see routes.js  ---
+// --- and pdf.js for where this is deliberately kept out of anything      ---
+// --- emailed to the customer.                                            ---
+ensureColumn('returns', 'received_parts_status', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'received_notes', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'received_completed_by', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'received_completed_at', "TEXT");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
