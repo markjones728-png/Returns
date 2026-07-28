@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const { STATUSES } = require('./utils/constants');
- 
+
 // PERSIST_DIR lets this point at a mounted persistent disk in production
 // (e.g. on Render) so the database survives restarts/redeploys. Locally it
 // just defaults to this project's own "data" folder.
@@ -11,7 +11,7 @@ const PERSIST_DIR = process.env.PERSIST_DIR || __dirname;
 const DB_PATH = path.join(PERSIST_DIR, 'data', 'returns.db');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 const db = new DatabaseSync(DB_PATH);
- 
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +21,7 @@ db.exec(`
     role TEXT NOT NULL DEFAULT 'staff',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
- 
+
   CREATE TABLE IF NOT EXISTS returns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     reference TEXT UNIQUE NOT NULL,
@@ -34,12 +34,16 @@ db.exec(`
     model TEXT NOT NULL,
     serial_number TEXT NOT NULL,
     fault_description TEXT NOT NULL,
+    collection_address TEXT NOT NULL DEFAULT '',
+    collection_hours TEXT NOT NULL DEFAULT '',
+    premises_type TEXT NOT NULL DEFAULT '',
+    courier_contact_number TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'Return Submitted',
     staff_notes TEXT DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
- 
+
   CREATE TABLE IF NOT EXISTS return_files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     return_id INTEGER NOT NULL,
@@ -51,7 +55,7 @@ db.exec(`
     uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (return_id) REFERENCES returns(id)
   );
- 
+
   CREATE TABLE IF NOT EXISTS return_status_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     return_id INTEGER NOT NULL,
@@ -62,7 +66,22 @@ db.exec(`
     FOREIGN KEY (return_id) REFERENCES returns(id)
   );
 `);
- 
+
+// --- Lightweight migrations: add any columns that don't exist yet on an  ---
+// --- already-created database, so upgrading the app never wipes data.   ---
+function ensureColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  const exists = cols.some((c) => c.name === column);
+  if (!exists) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+ensureColumn('returns', 'collection_address', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'collection_hours', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'premises_type', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'courier_contact_number', "TEXT NOT NULL DEFAULT ''");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
@@ -74,7 +93,7 @@ if (userCount === 0) {
   ).run(defaultUsername, hash, 'Administrator', 'admin');
   console.log(`Seeded default staff login -> username: "${defaultUsername}" password: "${defaultPassword}" (change this after first login!)`);
 }
- 
+
 function nextReference() {
   const year = new Date().getFullYear();
   const row = db.prepare(
@@ -83,5 +102,5 @@ function nextReference() {
   const seq = String(row.c + 1).padStart(4, '0');
   return `RT-${year}-${seq}`;
 }
- 
+
 module.exports = { db, nextReference, STATUSES };
