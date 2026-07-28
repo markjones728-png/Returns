@@ -64,6 +64,56 @@
 </div>
 <% } %>
 
+<div class="card" id="received">
+  <h2>Item Received Condition</h2>
+  <p class="muted">
+    Record the condition of the item as received, before inspection. This information is for
+    internal/staff use only - it is never included in anything emailed to the customer.
+  </p>
+  <div class="media-grid">
+    <% files.filter(f => f.kind === 'received_photo' || f.kind === 'received_video').forEach(f => { %>
+      <div class="media-item">
+        <% if (f.kind === 'received_photo') { %>
+          <a href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
+            <img src="/files/<%= r.id %>/<%= f.filename %>" alt="<%= f.original_name %>" />
+          </a>
+        <% } else { %>
+          <video controls src="/files/<%= r.id %>/<%= f.filename %>"></video>
+        <% } %>
+        <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
+        <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form">
+          <input type="hidden" name="redirect_anchor" value="received" />
+          <input type="text" name="caption" value="<%= f.caption %>" placeholder="Add a note about this photo..." />
+          <button type="submit" class="btn-tiny">Save</button>
+        </form>
+      </div>
+    <% }) %>
+    <% if (!files.some(f => f.kind === 'received_photo' || f.kind === 'received_video')) { %>
+      <p class="muted">No received-condition photos uploaded yet.</p>
+    <% } %>
+  </div>
+  <form action="/returns/<%= r.id %>/received" method="POST" enctype="multipart/form-data" class="form-grid">
+    <label class="full">Upload photos of the item as received
+      <input type="file" name="files" multiple accept="image/*,video/*" />
+    </label>
+    <label class="full">Parts Status</label>
+    <div class="full radio-group">
+      <% RECEIVED_PARTS_STATUSES.forEach(o => { %>
+        <label class="radio-option">
+          <input type="radio" name="received_parts_status" value="<%= o %>" <%= r.received_parts_status === o ? 'checked' : '' %> />
+          <%= o %>
+        </label>
+      <% }) %>
+    </div>
+    <label class="full">Notes
+      <textarea name="received_notes" rows="3" placeholder="e.g. list of any missing parts"><%= r.received_notes %></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary full">Save Received Condition</button>
+  </form>
+  <% if (r.received_completed_by) { %>
+    <p class="muted">Last saved by <%= r.received_completed_by %> on <%= new Date(r.received_completed_at).toLocaleString('en-GB') %></p>
+  <% } %>
+</div>
 
 <div class="card" id="inspection">
   <h2>Roger Technology Inspection Form</h2>
@@ -112,7 +162,7 @@
     <label>Quantity
       <input type="text" name="insp_quantity" value="<%= r.insp_quantity %>" />
     </label>
-  <label>Warranty Status
+    <label>Warranty Status
       <select name="insp_guarantee_status">
         <option value="">-- Select --</option>
         <% WARRANTY_STATUSES.forEach(o => { %>
@@ -242,10 +292,11 @@
   </form>
 </div>
 
-<div class="card">
+<div class="card" id="photos">
   <h2>Photos &amp; Videos</h2>
   <div class="media-grid">
-    <% files.forEach(f => { %>
+    <% var generalFiles = files.filter(f => f.kind === 'photo' || f.kind === 'video'); %>
+    <% generalFiles.forEach(f => { %>
       <div class="media-item">
         <% if (f.kind === 'photo') { %>
           <a href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
@@ -255,9 +306,14 @@
           <video controls src="/files/<%= r.id %>/<%= f.filename %>"></video>
         <% } %>
         <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
+        <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form">
+          <input type="hidden" name="redirect_anchor" value="photos" />
+          <input type="text" name="caption" value="<%= f.caption %>" placeholder="Add a note about this photo..." />
+          <button type="submit" class="btn-tiny">Save</button>
+        </form>
       </div>
     <% }) %>
-    <% if (files.length === 0) { %><p class="muted">No files uploaded yet.</p><% } %>
+    <% if (generalFiles.length === 0) { %><p class="muted">No files uploaded yet.</p><% } %>
   </div>
   <form action="/returns/<%= r.id %>/files" method="POST" enctype="multipart/form-data" class="form-grid">
     <label class="full">Upload additional photos/videos
