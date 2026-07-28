@@ -5,14 +5,14 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { db, nextReference } = require('../db');
 const {
-  STATUSES, CLOSED_STATUS, STATUS_COLORS,
+  STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
   APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
   REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, DEALER_DETAILS
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
-const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendReturnCompletedEmail, sendStaffInviteEmail } = require('../utils/email');
-const { generateReturnPdf } = require('../utils/pdf');
+const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail } = require('../utils/email');
+const { generateReturnPdf, generateReturnPdfBuffer } = require('../utils/pdf');
 const { generateRtAuthorisationPdf } = require('../utils/rt-form-pdf');
 const { streamBackupZip } = require('../utils/backup');
 const { requireAuth, requireAdmin } = require('./auth');
@@ -112,7 +112,7 @@ router.get('/returns/:id', (req, res) => {
   const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at DESC').all(returnRow.id);
 
   res.render('return-detail', {
-    r: returnRow, files, history, STATUSES,
+    r: returnRow, files, history, STATUSES, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
     statusColors: STATUS_COLORS,
     closedStatus: CLOSED_STATUS,
     APPLICATION_TYPES, PRODUCT_TYPES, GUARANTEE_STATUSES,
@@ -208,7 +208,7 @@ router.post('/returns/:id/status', async (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
-  const { status, note } = req.body;
+  const { status, note, manufacturer_rma_number, rta_rt_number } = req.body;
   if (!STATUSES.includes(status)) return res.status(400).send('Invalid status.');
 
   const statusChanged = status !== returnRow.status;
@@ -218,6 +218,17 @@ router.post('/returns/:id/status', async (req, res) => {
     INSERT INTO return_status_history (return_id, status, changed_by, note)
     VALUES (?, ?, ?, ?)
   `).run(returnRow.id, status, req.session.user.name, note || '');
+
+  // Only overwrite these numbers if something was actually entered this time,
+  // so they aren't accidentally wiped out by a later, unrelated status change.
+  if (manufacturer_rma_number && manufacturer_rma_number.trim()) {
+    db.prepare(`UPDATE returns SET manufacturer_rma_number = ? WHERE id = ?`)
+      .run(manufacturer_rma_number.trim(), returnRow.id);
+  }
+  if (rta_rt_number && rta_rt_number.trim()) {
+    db.prepare(`UPDATE returns SET rta_rt_number = ? WHERE id = ?`)
+      .run(rta_rt_number.trim(), returnRow.id);
+  }
 
   const updated = db.prepare('SELECT * FROM returns WHERE id = ?').get(returnRow.id);
 
@@ -233,6 +244,24 @@ router.post('/returns/:id/status', async (req, res) => {
     const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
     await sendReturnCompletedEmail(updated, history);
   }
+
+  res.redirect(`/returns/${returnRow.id}`);
+});
+
+// --- Staff: email the PDF report to the customer, and mark it as sent ---
+router.post('/returns/:id/send-report', async (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const historyForPdf = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
+  const pdfBuffer = await generateReturnPdfBuffer(returnRow, historyForPdf);
+  await sendReturnReportEmail(returnRow, pdfBuffer);
+
+  db.prepare(`UPDATE returns SET status = ?, updated_at = datetime('now') WHERE id = ?`).run('Report Sent', returnRow.id);
+  db.prepare(`
+    INSERT INTO return_status_history (return_id, status, changed_by, note)
+    VALUES (?, 'Report Sent', ?, 'PDF report emailed to customer')
+  `).run(returnRow.id, req.session.user.name);
 
   res.redirect(`/returns/${returnRow.id}`);
 });
