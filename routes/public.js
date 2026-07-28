@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { db, nextReference } = require('../db');
+const { APPLICATION_TYPES, PRODUCT_TYPES } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk } = require('../utils/files');
 const { sendReturnSubmittedEmail } = require('../utils/email');
@@ -10,13 +11,13 @@ router.get('/', (req, res) => {
 });
 
 router.get('/submit', (req, res) => {
-  res.render('submit', { error: null, old: {} });
+  res.render('submit', { error: null, old: {}, APPLICATION_TYPES, PRODUCT_TYPES });
 });
 
 router.post('/submit', (req, res, next) => {
   upload.array('files', 10)(req, res, (err) => {
     if (err) {
-      return res.render('submit', { error: err.message, old: req.body });
+      return res.render('submit', { error: err.message, old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
     }
     next();
   });
@@ -24,19 +25,29 @@ router.post('/submit', (req, res, next) => {
   const {
     company_name, contact_name, phone, email,
     collection_address, collection_hours, premises_type, courier_contact_number,
-    equipment_type, make, model, serial_number, fault_description
+    equipment_type, make, model, serial_number, fault_description,
+    insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date
   } = req.body;
 
   if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
-    return res.render('submit', { error: 'Please fill in all required fields.', old: req.body });
+    return res.render('submit', { error: 'Please fill in all required fields.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
   }
 
   const reference = nextReference();
 
   db.prepare(`
-    INSERT INTO returns (reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number, equipment_type, make, model, serial_number, fault_description, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
-  `).run(reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number, equipment_type, make, model, serial_number, fault_description);
+    INSERT INTO returns (
+      reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
+      equipment_type, make, model, serial_number, fault_description,
+      insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
+      status
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
+  `).run(
+    reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
+    equipment_type, make, model, serial_number, fault_description,
+    insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || ''
+  );
 
   const returnRow = db.prepare('SELECT * FROM returns WHERE reference = ?').get(reference);
 
