@@ -1,6 +1,11 @@
 const PDFDocument = require('pdfkit');
 
-function buildReturnPdfDoc(doc, returnRecord, statusHistory) {
+// opts.internal controls whether staff-only sections (currently: Item
+// Received Condition) are included. This must stay false for anything that
+// gets emailed to the customer - see generateReturnPdf vs
+// generateReturnPdfBuffer below.
+function buildReturnPdfDoc(doc, returnRecord, statusHistory, opts = {}) {
+  const internal = !!opts.internal;
   // Header
   doc
     .fontSize(20)
@@ -44,6 +49,15 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory) {
     ['Courier contact number', returnRecord.courier_contact_number]
   ]);
 
+  // Internal-only: how the item looked/what was in the box on arrival.
+  // Deliberately excluded when this PDF is built for the customer.
+  if (internal && (returnRecord.received_parts_status || returnRecord.received_notes)) {
+    section(doc, 'Item Received Condition', [
+      ['Parts status', returnRecord.received_parts_status],
+      ['Notes', returnRecord.received_notes]
+    ]);
+  }
+
   if (returnRecord.insp_application_type || returnRecord.insp_product_type || returnRecord.insp_dimensions || returnRecord.insp_weight || returnRecord.insp_install_date) {
     section(doc, 'Installation Details', [
       ['Application type', returnRecord.insp_application_type],
@@ -63,9 +77,7 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory) {
     ].filter(([, value]) => value));
   }
 
-  if (returnRecord.staff_notes) {
-    section(doc, 'Staff Notes', [[null, returnRecord.staff_notes]]);
-  }
+  // Staff Notes are deliberately never included on this report.
 
   // Status history
   doc.moveDown(0.5);
@@ -87,8 +99,9 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory) {
     });
 }
 
-// Streams the PDF straight to an HTTP response (used by the "Download PDF
-// Report" button).
+// Streams the PDF straight to an HTTP response (used by staff's "Download
+// PDF Report" button). This is the internal/staff copy - it includes the
+// Item Received Condition section.
 function generateReturnPdf(returnRecord, statusHistory, res) {
   const doc = new PDFDocument({ margin: 50 });
 
@@ -99,13 +112,14 @@ function generateReturnPdf(returnRecord, statusHistory, res) {
   );
   doc.pipe(res);
 
-  buildReturnPdfDoc(doc, returnRecord, statusHistory);
+  buildReturnPdfDoc(doc, returnRecord, statusHistory, { internal: true });
 
   doc.end();
 }
 
 // Builds the same PDF in memory and resolves a Buffer (used to attach it to
-// the "Email Report to Customer" email).
+// the "Email Report to Customer" email). This is the customer-facing copy -
+// internal-only sections (Item Received Condition, Staff Notes) are left out.
 function generateReturnPdfBuffer(returnRecord, statusHistory) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
@@ -115,7 +129,7 @@ function generateReturnPdfBuffer(returnRecord, statusHistory) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    buildReturnPdfDoc(doc, returnRecord, statusHistory);
+    buildReturnPdfDoc(doc, returnRecord, statusHistory, { internal: false });
 
     doc.end();
   });
