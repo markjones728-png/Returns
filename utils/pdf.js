@@ -159,28 +159,55 @@ function addPhotosSection(doc, files, reference) {
 
   const maxWidth = 495;
   const maxHeight = 320;
+  const left = doc.page.margins.left;
 
   images.forEach((f) => {
     const abspath = filePath(reference, f.filename);
     if (!fs.existsSync(abspath)) return;
 
-    if (doc.y + maxHeight + 30 > doc.page.height - doc.page.margins.bottom) {
-      doc.addPage();
-    }
-
+    // Work out the rendered size ourselves (preserving aspect ratio, never
+    // upscaling) instead of relying on PDFKit's `fit`/`align` to advance the
+    // page cursor - with photos of very different aspect ratios (e.g. a wide
+    // logo next to a tall product shot) that left the cursor in the wrong
+    // place and captions/images ended up overlapping.
+    let img;
     try {
-      doc.image(abspath, { fit: [maxWidth, maxHeight], align: 'center' });
+      img = doc.openImage(abspath);
     } catch (err) {
       return; // skip unreadable/corrupt image rather than crash the whole report
     }
-    doc.moveDown(0.2);
+
+    const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+    const renderWidth = img.width * ratio;
+    const renderHeight = img.height * ratio;
+
+    if (doc.y + renderHeight + 30 > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+    }
+
+    const x = left + (maxWidth - renderWidth) / 2;
+    const y = doc.y;
+
+    try {
+      doc.image(img, x, y, { width: renderWidth, height: renderHeight });
+    } catch (err) {
+      return;
+    }
+
+    // Set the cursor explicitly to just below the image we actually drew,
+    // rather than trusting PDFKit to have moved it there itself.
+    doc.x = left;
+    doc.y = y + renderHeight + 6;
+
     let label = f.kind === 'received_photo' ? `${f.original_name} (Item Received Condition)` : f.original_name;
     if (f.caption) label += ` — ${f.caption}`;
-    doc.fontSize(9).fillColor('#64748b').text(label, { align: 'center' });
+    doc.fontSize(9).fillColor('#64748b').text(label, left, doc.y, { width: maxWidth, align: 'center' });
     doc.moveDown(0.8);
+    doc.x = left;
   });
 
   if (videos.length) {
+    doc.x = left;
     doc.moveDown(0.3);
     doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
     videos.forEach((f) => {
@@ -189,8 +216,7 @@ function addPhotosSection(doc, files, reference) {
       doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
     });
   }
-}
-
+}    
 // Streams the PDF straight to an HTTP response (used by staff's "Download
 // PDF Report" button). This is the internal/staff copy - it includes the
 // Item Received Condition section and every uploaded photo.
