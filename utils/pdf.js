@@ -53,9 +53,10 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
 
   // Internal-only: how the item looked/what was in the box on arrival.
   // Deliberately excluded when this PDF is built for the customer.
-  if (internal && (returnRecord.received_parts_status || returnRecord.received_notes)) {
+  if (internal && (returnRecord.received_parts_status || returnRecord.received_notes || returnRecord.received_condition_flags)) {
     section(doc, 'Item Received Condition', [
       ['Parts status', returnRecord.received_parts_status],
+      ['Condition on arrival', returnRecord.received_condition_flags],
       ['Notes', returnRecord.received_notes]
     ]);
   }
@@ -72,10 +73,13 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
 
   // Internal-only: full product/nameplate identification from the
   // inspection form. Excluded from the customer-facing copy.
-  if (internal && (returnRecord.insp_product_code || returnRecord.insp_quantity || returnRecord.insp_guarantee_status)) {
+  if (internal && (returnRecord.insp_product_code || returnRecord.insp_quantity || returnRecord.insp_invoice_number || returnRecord.insp_rt_product_type || returnRecord.insp_installation_age || returnRecord.insp_guarantee_status)) {
     section(doc, 'Product Details', [
       ['Product code', returnRecord.insp_product_code],
       ['Quantity', returnRecord.insp_quantity],
+      ['Original invoice / order number', returnRecord.insp_invoice_number],
+      ['Product type (Roger component)', returnRecord.insp_rt_product_type],
+      ['Age of installation', returnRecord.insp_installation_age],
       ['Warranty status', returnRecord.insp_guarantee_status]
     ]);
   }
@@ -94,10 +98,11 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
 
   // Internal-only: the engineer's own diagnosis notes. Excluded from the
   // customer-facing copy since these can be frank/internal in tone.
-  if (internal && (returnRecord.insp_problem_by_client || returnRecord.insp_problem_by_dealer || returnRecord.insp_action_suggested || returnRecord.insp_repairable || returnRecord.insp_request_type)) {
+  if (internal && (returnRecord.insp_problem_by_client || returnRecord.insp_problem_by_dealer || returnRecord.insp_action_suggested || returnRecord.insp_repairable || returnRecord.insp_request_type || returnRecord.insp_fault_occurrence)) {
     section(doc, 'Problem Found', [
       ['Problem identified by client', returnRecord.insp_problem_by_client],
       ['Problem identified by dealer/engineer', returnRecord.insp_problem_by_dealer],
+      ['When does the fault occur', returnRecord.insp_fault_occurrence],
       ['Action suggested', returnRecord.insp_action_suggested],
       ['Repairable', returnRecord.insp_repairable],
       ['Request type', returnRecord.insp_request_type]
@@ -108,6 +113,17 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
     section(doc, 'Testing', [
       ['Test result', returnRecord.test_result],
       ['Test notes', returnRecord.test_notes]
+    ]);
+  }
+
+  // Internal-only: final warranty decision, matching the Warranty Repair
+  // Return Form's section 5. Excluded from the customer-facing copy.
+  if (internal && (returnRecord.insp_warranty_verdict || returnRecord.insp_rejection_reason || returnRecord.insp_action_taken || returnRecord.insp_warranty_summary)) {
+    section(doc, 'Warranty Determination & Final Verdict', [
+      ['Final status', returnRecord.insp_warranty_verdict],
+      ['Reason for rejection', returnRecord.insp_rejection_reason],
+      ['Action taken', returnRecord.insp_action_taken],
+      ['Technician summary', returnRecord.insp_warranty_summary]
     ]);
   }
 
@@ -216,7 +232,8 @@ function addPhotosSection(doc, files, reference) {
       doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
     });
   }
-}    
+}
+
 // Streams the PDF straight to an HTTP response (used by staff's "Download
 // PDF Report" button). This is the internal/staff copy - it includes the
 // Item Received Condition section and every uploaded photo.
