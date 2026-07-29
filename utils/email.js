@@ -109,6 +109,7 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
     <h3>Item Received Condition</h3>
     <p>
       <strong>Parts status:</strong> ${escapeHtml(returnRecord.received_parts_status)}<br/>
+      <strong>Condition on arrival:</strong> ${escapeHtml(returnRecord.received_condition_flags)}<br/>
       <strong>Notes:</strong> ${escapeHtml(returnRecord.received_notes)}
     </p>
 
@@ -123,9 +124,13 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
 
     <h3>Inspection &amp; Testing</h3>
     <p>
+      <strong>Original invoice / order number:</strong> ${escapeHtml(returnRecord.insp_invoice_number)}<br/>
+      <strong>Product type (Roger component):</strong> ${escapeHtml(returnRecord.insp_rt_product_type)}<br/>
+      <strong>Age of installation:</strong> ${escapeHtml(returnRecord.insp_installation_age)}<br/>
       <strong>Warranty status:</strong> ${escapeHtml(returnRecord.insp_guarantee_status)}<br/>
       <strong>Problem identified by client:</strong> ${escapeHtml(returnRecord.insp_problem_by_client)}<br/>
       <strong>Problem identified by dealer/engineer:</strong> ${escapeHtml(returnRecord.insp_problem_by_dealer)}<br/>
+      <strong>When does the fault occur:</strong> ${escapeHtml(returnRecord.insp_fault_occurrence)}<br/>
       <strong>Action suggested:</strong> ${escapeHtml(returnRecord.insp_action_suggested)}<br/>
       <strong>Repairable:</strong> ${escapeHtml(returnRecord.insp_repairable)}<br/>
       <strong>Request type:</strong> ${escapeHtml(returnRecord.insp_request_type)}<br/>
@@ -133,6 +138,14 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
       <strong>RTA RT number:</strong> ${escapeHtml(returnRecord.rta_rt_number)}<br/>
       <strong>Test result:</strong> ${escapeHtml(returnRecord.test_result)}<br/>
       <strong>Test notes:</strong> ${escapeHtml(returnRecord.test_notes)}
+    </p>
+
+    <h3>Warranty Determination &amp; Final Verdict</h3>
+    <p>
+      <strong>Final status:</strong> ${escapeHtml(returnRecord.insp_warranty_verdict)}<br/>
+      <strong>Reason for rejection:</strong> ${escapeHtml(returnRecord.insp_rejection_reason)}<br/>
+      <strong>Action taken:</strong> ${escapeHtml(returnRecord.insp_action_taken)}<br/>
+      <strong>Technician summary:</strong> ${escapeHtml(returnRecord.insp_warranty_summary)}
     </p>
 
     ${returnRecord.staff_notes ? `<h3>Staff Notes</h3><p>${escapeHtml(returnRecord.staff_notes)}</p>` : ''}
