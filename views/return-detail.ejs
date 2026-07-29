@@ -15,6 +15,96 @@
   <% } %>
 </div>
 
+<% if (user.role === 'admin') { %>
+<details class="card">
+  <summary><h2 style="display:inline;">Edit Submitted Details (Admin Only)</h2></summary>
+  <p class="muted">
+    Corrects the details the customer originally typed in when they booked this return in (or that
+    staff entered on their behalf). Changing the email address also changes what the customer needs
+    to use on the Track a Return page and where their emails are sent.
+  </p>
+  <form action="/returns/<%= r.id %>/customer-details" method="POST" class="form-grid">
+    <h2 class="full section-heading">Your Details</h2>
+    <label>Company Name *
+      <input type="text" name="company_name" value="<%= r.company_name %>" required />
+    </label>
+    <label>Contact Name *
+      <input type="text" name="contact_name" value="<%= r.contact_name %>" required />
+    </label>
+    <label>Phone Number *
+      <input type="tel" name="phone" value="<%= r.phone %>" required />
+    </label>
+    <label>Email Address *
+      <input type="email" name="email" value="<%= r.email %>" required />
+    </label>
+
+    <h2 class="full section-heading">Collection Details</h2>
+    <label class="full">Collection Address *
+      <textarea name="collection_address" rows="3" required><%= r.collection_address %></textarea>
+    </label>
+    <label>Premises Type *
+      <select name="premises_type" required>
+        <% ['Office', 'House', 'Unit', 'Box', 'Shed', 'Other'].forEach(t => { %>
+          <option value="<%= t %>" <%= r.premises_type === t ? 'selected' : '' %>><%= t %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Open Hours of Collection Address *
+      <input type="text" name="collection_hours" value="<%= r.collection_hours %>" required />
+    </label>
+    <label class="full">Contact Number for Courier *
+      <input type="tel" name="courier_contact_number" value="<%= r.courier_contact_number %>" required />
+    </label>
+
+    <h2 class="full section-heading">Equipment Details</h2>
+    <label>Equipment Type *
+      <input type="text" name="equipment_type" value="<%= r.equipment_type %>" required />
+    </label>
+    <label>Make *
+      <input type="text" name="make" value="<%= r.make %>" required />
+    </label>
+    <label>Model *
+      <input type="text" name="model" value="<%= r.model %>" required />
+    </label>
+    <label>Serial Number *
+      <input type="text" name="serial_number" value="<%= r.serial_number %>" required />
+    </label>
+    <label class="full">Description of Fault *
+      <textarea name="fault_description" rows="4" required><%= r.fault_description %></textarea>
+    </label>
+
+    <h2 class="full section-heading">Installation Details (if known)</h2>
+    <label>Application Type
+      <select name="insp_application_type">
+        <option value="">-- Select --</option>
+        <% APPLICATION_TYPES.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_application_type === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Door / Product Type
+      <select name="insp_product_type">
+        <option value="">-- Select --</option>
+        <% PRODUCT_TYPES.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_product_type === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Dimensions
+      <input type="text" name="insp_dimensions" value="<%= r.insp_dimensions %>" />
+    </label>
+    <label>Weight
+      <input type="text" name="insp_weight" value="<%= r.insp_weight %>" />
+    </label>
+    <label>Installation Date
+      <input type="date" name="insp_install_date" value="<%= r.insp_install_date %>" />
+    </label>
+
+    <button type="submit" class="btn btn-primary full">Save Corrected Details</button>
+  </form>
+</details>
+<% } %>
+
 <div class="grid-2">
   <div class="card">
     <h2>Customer Details</h2>
@@ -105,6 +195,16 @@
         </label>
       <% }) %>
     </div>
+    <label class="full">Initial Condition on Arrival (tick all that apply)</label>
+    <% var currentFlags = (r.received_condition_flags || '').split(',').map(s => s.trim()).filter(Boolean); %>
+    <div class="full radio-group">
+      <% ARRIVAL_CONDITION_FLAGS.forEach(o => { %>
+        <label class="radio-option">
+          <input type="checkbox" name="received_condition_flags" value="<%= o %>" <%= currentFlags.includes(o) ? 'checked' : '' %> />
+          <%= o %>
+        </label>
+      <% }) %>
+    </div>
     <label class="full">Notes
       <textarea name="received_notes" rows="3" placeholder="e.g. list of any missing parts"><%= r.received_notes %></textarea>
     </label>
@@ -162,6 +262,25 @@
     <label>Quantity
       <input type="text" name="insp_quantity" value="<%= r.insp_quantity %>" />
     </label>
+    <label>Original Invoice / Order Number
+      <input type="text" name="insp_invoice_number" value="<%= r.insp_invoice_number %>" />
+    </label>
+    <label>Product Type (Roger Component)
+      <select name="insp_rt_product_type">
+        <option value="">-- Select --</option>
+        <% RT_PRODUCT_TYPES.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_rt_product_type === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Age of Installation
+      <select name="insp_installation_age">
+        <option value="">-- Select --</option>
+        <% INSTALLATION_AGE_OPTIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_installation_age === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
     <label>Warranty Status
       <select name="insp_guarantee_status">
         <option value="">-- Select --</option>
@@ -214,6 +333,14 @@
         <% }) %>
       </select>
     </label>
+    <label>When Does the Fault Occur?
+      <select name="insp_fault_occurrence">
+        <option value="">-- Select --</option>
+        <% FAULT_OCCURRENCE_OPTIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_fault_occurrence === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
 
     <button type="submit" class="btn btn-primary full">Save Inspection Details</button>
   </form>
@@ -243,6 +370,59 @@
     <p class="muted">Last saved by <%= r.test_completed_by %> on <%= new Date(r.test_completed_at).toLocaleString('en-GB') %></p>
   <% } %>
 </div>
+
+<div class="card" id="warranty">
+  <h2>Warranty Determination &amp; Final Verdict</h2>
+  <p class="muted">
+    Internal/staff use only - fill this in once testing is complete to record the final warranty
+    decision. This is never included on anything emailed or shown to the customer.
+  </p>
+  <form action="/returns/<%= r.id %>/warranty" method="POST" class="form-grid">
+    <label>Final Status
+      <select name="insp_warranty_verdict" id="warrantyVerdictSelect">
+        <option value="">-- Select --</option>
+        <% WARRANTY_VERDICT_OPTIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_warranty_verdict === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label class="full" id="rejectionReasonField" style="display:none;">Reason for Rejection (if applicable)
+      <select name="insp_rejection_reason">
+        <option value="">-- Select --</option>
+        <% REJECTION_REASONS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_rejection_reason === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Action Taken
+      <select name="insp_action_taken">
+        <option value="">-- Select --</option>
+        <% ACTION_TAKEN_OPTIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.insp_action_taken === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label class="full">Technician's Detailed Summary
+      <textarea name="insp_warranty_summary" rows="3"><%= r.insp_warranty_summary %></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary full">Save Warranty Determination</button>
+  </form>
+  <% if (r.warranty_completed_by) { %>
+    <p class="muted">Last saved by <%= r.warranty_completed_by %> on <%= new Date(r.warranty_completed_at).toLocaleString('en-GB') %></p>
+  <% } %>
+</div>
+
+<script>
+  (function () {
+    var verdictSelect = document.getElementById('warrantyVerdictSelect');
+    var reasonField = document.getElementById('rejectionReasonField');
+    function updateReasonField() {
+      reasonField.style.display = verdictSelect.value === 'Rejected Warranty' ? '' : 'none';
+    }
+    verdictSelect.addEventListener('change', updateReasonField);
+    updateReasonField();
+  })();
+</script>
 
 <div class="card">
   <h2>Update Status</h2>
