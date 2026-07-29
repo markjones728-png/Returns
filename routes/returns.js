@@ -7,7 +7,9 @@ const { db, nextReference } = require('../db');
 const {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
   APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS
+  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+  RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
@@ -117,6 +119,8 @@ router.get('/returns/:id', (req, res) => {
     closedStatus: CLOSED_STATUS,
     APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
     REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+    RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
+    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS,
     user: req.session.user
   });
 });
@@ -128,31 +132,31 @@ router.post('/returns/:id/inspection', (req, res) => {
 
   const {
     insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
-    insp_product_code, insp_quantity,
+    insp_product_code, insp_quantity, insp_invoice_number, insp_rt_product_type, insp_installation_age,
     insp_plate_p_code, insp_plate_voltage, insp_plate_batch, insp_plate_in, insp_plate_pm,
     insp_guarantee_status,
     insp_problem_by_client, insp_problem_by_dealer, insp_action_suggested,
-    insp_repairable, insp_request_type
+    insp_repairable, insp_request_type, insp_fault_occurrence
   } = req.body;
 
   db.prepare(`
     UPDATE returns SET
       insp_application_type = ?, insp_product_type = ?, insp_dimensions = ?, insp_weight = ?, insp_install_date = ?,
-      insp_product_code = ?, insp_quantity = ?,
+      insp_product_code = ?, insp_quantity = ?, insp_invoice_number = ?, insp_rt_product_type = ?, insp_installation_age = ?,
       insp_plate_p_code = ?, insp_plate_voltage = ?, insp_plate_batch = ?, insp_plate_in = ?, insp_plate_pm = ?,
       insp_guarantee_status = ?,
       insp_problem_by_client = ?, insp_problem_by_dealer = ?, insp_action_suggested = ?,
-      insp_repairable = ?, insp_request_type = ?,
+      insp_repairable = ?, insp_request_type = ?, insp_fault_occurrence = ?,
       insp_completed_by = ?, insp_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
   `).run(
     insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || '',
-    insp_product_code || '', insp_quantity || '',
+    insp_product_code || '', insp_quantity || '', insp_invoice_number || '', insp_rt_product_type || '', insp_installation_age || '',
     insp_plate_p_code || '', insp_plate_voltage || '', insp_plate_batch || '', insp_plate_in || '', insp_plate_pm || '',
     insp_guarantee_status || '',
     insp_problem_by_client || '', insp_problem_by_dealer || '', insp_action_suggested || '',
-    insp_repairable || '', insp_request_type || '',
+    insp_repairable || '', insp_request_type || '', insp_fault_occurrence || '',
     req.session.user.name,
     returnRow.id
   );
@@ -175,13 +179,18 @@ router.post('/returns/:id/received', (req, res, next) => {
 
   const { received_parts_status, received_notes } = req.body;
 
+  // Checkboxes come through as a string if only one is ticked, an array if
+  // several are, or undefined if none are - normalise to a comma-joined list.
+  let flags = req.body.received_condition_flags || [];
+  if (!Array.isArray(flags)) flags = [flags];
+
   db.prepare(`
     UPDATE returns SET
-      received_parts_status = ?, received_notes = ?,
+      received_parts_status = ?, received_notes = ?, received_condition_flags = ?,
       received_completed_by = ?, received_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
-  `).run(received_parts_status || '', received_notes || '', req.session.user.name, returnRow.id);
+  `).run(received_parts_status || '', received_notes || '', flags.join(', '), req.session.user.name, returnRow.id);
 
   if (req.files && req.files.length) {
     const saved = saveFilesToDisk(returnRow.reference, req.files, 'received');
@@ -211,6 +220,69 @@ router.post('/returns/:id/test', (req, res) => {
   `).run(test_result || '', test_notes || '', req.session.user.name, returnRow.id);
 
   res.redirect(`/returns/${returnRow.id}#testing`);
+});
+
+// --- Staff: warranty determination & final verdict, matching the Roger  ---
+// --- Technology Warranty Repair Return Form's section 5. Internal/staff ---
+// --- use only, same as the rest of the Inspection Form.                 ---
+router.post('/returns/:id/warranty', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const { insp_warranty_verdict, insp_rejection_reason, insp_action_taken, insp_warranty_summary } = req.body;
+
+  db.prepare(`
+    UPDATE returns SET
+      insp_warranty_verdict = ?, insp_rejection_reason = ?, insp_action_taken = ?, insp_warranty_summary = ?,
+      warranty_completed_by = ?, warranty_completed_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(
+    insp_warranty_verdict || '', insp_rejection_reason || '', insp_action_taken || '', insp_warranty_summary || '',
+    req.session.user.name,
+    returnRow.id
+  );
+
+  res.redirect(`/returns/${returnRow.id}#warranty`);
+});
+
+// --- Admin only: correct/edit the details the customer originally typed  ---
+// --- in at submission, in case of a mistake at booking-in or details     ---
+// --- that have changed since. Any change here also changes what the     ---
+// --- customer sees on their Track a Return page and in emails, since     ---
+// --- those all read straight from these same columns.                   ---
+router.post('/returns/:id/customer-details', requireAdmin, (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const {
+    company_name, contact_name, phone, email,
+    collection_address, collection_hours, premises_type, courier_contact_number,
+    equipment_type, make, model, serial_number, fault_description,
+    insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date
+  } = req.body;
+
+  if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
+    return res.status(400).send('Please fill in all required fields, then go back and try again.');
+  }
+
+  db.prepare(`
+    UPDATE returns SET
+      company_name = ?, contact_name = ?, phone = ?, email = ?,
+      collection_address = ?, collection_hours = ?, premises_type = ?, courier_contact_number = ?,
+      equipment_type = ?, make = ?, model = ?, serial_number = ?, fault_description = ?,
+      insp_application_type = ?, insp_product_type = ?, insp_dimensions = ?, insp_weight = ?, insp_install_date = ?,
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(
+    company_name, contact_name, phone, email,
+    collection_address, collection_hours, premises_type, courier_contact_number,
+    equipment_type, make, model, serial_number, fault_description,
+    insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || '',
+    returnRow.id
+  );
+
+  res.redirect(`/returns/${returnRow.id}`);
 });
 
 // --- Staff: download a filled copy of Roger Technology's own RMA form ---
