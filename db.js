@@ -132,9 +132,29 @@ ensureColumn('returns', 'received_parts_status', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'received_notes', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'received_completed_by', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'received_completed_at', "TEXT");
+// Comma-separated selection from ARRIVAL_CONDITION_FLAGS (e.g. "Visible
+// damage, Signs of water ingress") - added to match the Roger Technology
+// Warranty Repair Return Form's "Initial Condition on Arrival" checklist.
+ensureColumn('returns', 'received_condition_flags', "TEXT NOT NULL DEFAULT ''");
 
 // Optional staff-entered note against an individual uploaded photo/video.
 ensureColumn('return_files', 'caption', "TEXT NOT NULL DEFAULT ''");
+
+// --- Fields added to match the Roger Technology "Warranty Repair Return   ---
+// --- Form" the returns department fills in on paper - only the fields    ---
+// --- not already covered by the customer's own submission (see           ---
+// --- return-detail.ejs). Internal/staff use only, same as the rest of    ---
+// --- the Inspection Form.                                                ---
+ensureColumn('returns', 'insp_invoice_number', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_rt_product_type', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_installation_age', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_fault_occurrence', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_warranty_verdict', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_rejection_reason', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_action_taken', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'insp_warranty_summary', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'warranty_completed_by', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'warranty_completed_at', "TEXT");
 
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
