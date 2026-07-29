@@ -58,11 +58,37 @@ const PRODUCT_TYPES = ['Sliding Gate', 'Swing Gate', 'Barrier', 'Bollard', 'Gara
 const WARRANTY_STATUSES = ['In Warranty', 'Out Warranty', 'Unknown'];
 const REPAIRABLE_OPTIONS = ['Repairable', 'Not Repairable', 'Unknown'];
 const REQUEST_TYPES = ['Return to Roger Technology for Inspection', 'Request for Quote Only'];
-const TEST_RESULTS = ['Pass', 'Fail', 'Partial / Further Work Needed'];
+// 'Intermittent Fault Found' and 'Unable to Test' were added to match the
+// Roger Technology Warranty Repair Return Form's Bench Test Result options -
+// the original three are kept as-is so existing saved returns still show
+// their selection correctly.
+const TEST_RESULTS = ['Pass', 'Fail', 'Partial / Further Work Needed', 'Intermittent Fault Found', 'Unable to Test'];
 
 // Options for the "Received Condition" check done when the item first
 // arrives at the returns department - internal/staff use only, see below.
 const RECEIVED_PARTS_STATUSES = ['All Parts Present', 'Parts Missing'];
+
+// --- Options added to match the Roger Technology "Warranty Repair Return
+// --- Form" that the returns department fills in on paper today. Only the
+// --- fields NOT already captured from the customer's own submission are
+// --- added here (see return-detail.ejs comments for the full mapping).
+const RT_PRODUCT_TYPES = [
+  'Ram Actuator (Swing)', 'Articulated Arm', 'Underground Motor',
+  'Sliding Gate Motor', 'Control Board', 'Accessory: Photocells / Intercom / Remote / Other'
+];
+const INSTALLATION_AGE_OPTIONS = ['Less than 1 month', '1-6 months', '6-12 months', '1-2 years', 'Out of warranty'];
+const FAULT_OCCURRENCE_OPTIONS = ['Constantly', 'Intermittently', 'Weather-dependent (Rain / Cold / Heat)', 'Upon initial power-up'];
+const ARRIVAL_CONDITION_FLAGS = ['No visible damage', 'Visible damage', 'Missing parts', 'Signs of water ingress'];
+const WARRANTY_VERDICT_OPTIONS = ['Approved Warranty', 'Rejected Warranty'];
+const REJECTION_REASONS = [
+  'Power surge / lightning damage',
+  'Water ingress due to poor sealing during installation',
+  'Mechanical overload - gate too heavy or unbalanced for motor specification',
+  'Pest damage causing circuit board short',
+  'Physical damage / wear and tear',
+  'Other'
+];
+const ACTION_TAKEN_OPTIONS = ['Replaced under warranty', 'Repaired', 'Scrapped', 'Returned to customer as-is'];
 
 // Access Control Ltd / RT Automation's own details, as they appear on the
 // Roger Technology "Request for Authorisation to Return Product for
@@ -78,5 +104,7 @@ const DEALER_DETAILS = {
 module.exports = {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
   APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS
+  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+  RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS
 };
