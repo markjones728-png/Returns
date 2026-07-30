@@ -6,8 +6,8 @@ const bcrypt = require('bcryptjs');
 const { db, nextReference } = require('../db');
 const {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
-  APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+  APPLICATION_TYPES, PRODUCT_TYPES,
+  TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
   WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS
 } = require('../utils/constants');
@@ -15,7 +15,6 @@ const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
 const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail } = require('../utils/email');
 const { generateReturnPdf, generateReturnPdfBuffer } = require('../utils/pdf');
-const { generateRtAuthorisationPdf } = require('../utils/rt-form-pdf');
 const { streamBackupZip } = require('../utils/backup');
 const { requireAuth, requireAdmin } = require('./auth');
 
@@ -117,8 +116,8 @@ router.get('/returns/:id', (req, res) => {
     r: returnRow, files, history, STATUSES, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
     statusColors: STATUS_COLORS,
     closedStatus: CLOSED_STATUS,
-    APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-    REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+    APPLICATION_TYPES, PRODUCT_TYPES,
+    TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
     RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
     WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS,
     user: req.session.user
@@ -130,33 +129,21 @@ router.post('/returns/:id/inspection', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
-  const {
-    insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
-    insp_product_code, insp_quantity, insp_invoice_number, insp_rt_product_type, insp_installation_age,
-    insp_plate_p_code, insp_plate_voltage, insp_plate_batch, insp_plate_in, insp_plate_pm,
-    insp_guarantee_status,
-    insp_problem_by_client, insp_problem_by_dealer, insp_action_suggested,
-    insp_repairable, insp_request_type, insp_fault_occurrence
-  } = req.body;
+  // Matches the Roger Technology Warranty Repair Return Form's "Product
+  // Information" and "Reported Fault" sections - everything else on that
+  // form (customer/product identity, RMA number, date received) is already
+  // captured elsewhere, and the fields specific to the older "Request for
+  // Authorisation to Return Product for Inspection" form have been retired.
+  const { insp_invoice_number, insp_rt_product_type, insp_installation_age, insp_fault_occurrence } = req.body;
 
   db.prepare(`
     UPDATE returns SET
-      insp_application_type = ?, insp_product_type = ?, insp_dimensions = ?, insp_weight = ?, insp_install_date = ?,
-      insp_product_code = ?, insp_quantity = ?, insp_invoice_number = ?, insp_rt_product_type = ?, insp_installation_age = ?,
-      insp_plate_p_code = ?, insp_plate_voltage = ?, insp_plate_batch = ?, insp_plate_in = ?, insp_plate_pm = ?,
-      insp_guarantee_status = ?,
-      insp_problem_by_client = ?, insp_problem_by_dealer = ?, insp_action_suggested = ?,
-      insp_repairable = ?, insp_request_type = ?, insp_fault_occurrence = ?,
+      insp_invoice_number = ?, insp_rt_product_type = ?, insp_installation_age = ?, insp_fault_occurrence = ?,
       insp_completed_by = ?, insp_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || '',
-    insp_product_code || '', insp_quantity || '', insp_invoice_number || '', insp_rt_product_type || '', insp_installation_age || '',
-    insp_plate_p_code || '', insp_plate_voltage || '', insp_plate_batch || '', insp_plate_in || '', insp_plate_pm || '',
-    insp_guarantee_status || '',
-    insp_problem_by_client || '', insp_problem_by_dealer || '', insp_action_suggested || '',
-    insp_repairable || '', insp_request_type || '', insp_fault_occurrence || '',
+    insp_invoice_number || '', insp_rt_product_type || '', insp_installation_age || '', insp_fault_occurrence || '',
     req.session.user.name,
     returnRow.id
   );
@@ -283,14 +270,6 @@ router.post('/returns/:id/customer-details', requireAdmin, (req, res) => {
   );
 
   res.redirect(`/returns/${returnRow.id}`);
-});
-
-// --- Staff: download a filled copy of Roger Technology's own RMA form ---
-router.get('/returns/:id/rt-form.pdf', (req, res) => {
-  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
-  if (!returnRow) return res.status(404).send('Return not found.');
-
-  generateRtAuthorisationPdf(returnRow, res);
 });
 
 // Quick one-click archive/reopen actions (shortcuts for the status form above)
