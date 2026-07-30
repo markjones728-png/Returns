@@ -51,14 +51,22 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
     ['Courier contact number', returnRecord.courier_contact_number]
   ]);
 
-  // Internal-only: how the item looked/what was in the box on arrival.
+  // Internal-only: how the item looked/what was in the box on arrival,
+  // plus any received-condition photos/videos shown directly underneath.
   // Deliberately excluded when this PDF is built for the customer.
-  if (internal && (returnRecord.received_parts_status || returnRecord.received_notes || returnRecord.received_condition_flags)) {
+  const receivedPhotos = (files || []).filter((f) => f.kind === 'received_photo');
+  const receivedVideos = (files || []).filter((f) => f.kind === 'received_video');
+  const hasReceivedMedia = receivedPhotos.length > 0 || receivedVideos.length > 0;
+
+  if (internal && (returnRecord.received_parts_status || returnRecord.received_notes || returnRecord.received_condition_flags || hasReceivedMedia)) {
     section(doc, 'Item Received Condition', [
       ['Parts status', returnRecord.received_parts_status],
       ['Condition on arrival', returnRecord.received_condition_flags],
       ['Notes', returnRecord.received_notes]
     ]);
+    if (hasReceivedMedia) {
+      renderMediaInline(doc, receivedPhotos, receivedVideos, returnRecord.reference);
+    }
   }
 
   if (returnRecord.insp_application_type || returnRecord.insp_product_type || returnRecord.insp_dimensions || returnRecord.insp_weight || returnRecord.insp_install_date) {
@@ -138,7 +146,8 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
       align: 'center'
     });
 
-  // Internal-only: every uploaded photo (general + received-condition),
+  // Internal-only: every general uploaded photo (received-condition photos
+  // are shown earlier, directly under Item Received Condition instead),
   // embedded on their own page(s) at the end of the report. Deliberately
   // excluded when this PDF is built for the customer.
   if (internal && files && files.length) {
@@ -146,9 +155,69 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
   }
 }
 
+// Draws a list of images (and a text-only list of videos) at the current
+// cursor position, with no page break or heading of its own - used to embed
+// received-condition photos right under the Item Received Condition text.
+function renderMediaInline(doc, images, videos, reference) {
+  const maxWidth = 495;
+  const maxHeight = 320;
+  const left = doc.page.margins.left;
+
+  images.forEach((f) => {
+    const abspath = filePath(reference, f.filename);
+    if (!fs.existsSync(abspath)) return;
+
+    let img;
+    try {
+      img = doc.openImage(abspath);
+    } catch (err) {
+      return; // skip unreadable/corrupt image rather than crash the whole report
+    }
+
+    const ratio = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+    const renderWidth = img.width * ratio;
+    const renderHeight = img.height * ratio;
+
+    if (doc.y + renderHeight + 30 > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+    }
+
+    const x = left + (maxWidth - renderWidth) / 2;
+    const y = doc.y;
+
+    try {
+      doc.image(img, x, y, { width: renderWidth, height: renderHeight });
+    } catch (err) {
+      return;
+    }
+
+    // Set the cursor explicitly to just below the image we actually drew,
+    // rather than trusting PDFKit to have moved it there itself.
+    doc.x = left;
+    doc.y = y + renderHeight + 6;
+
+    let label = f.original_name;
+    if (f.caption) label += ` — ${f.caption}`;
+    doc.fontSize(9).fillColor('#64748b').text(label, left, doc.y, { width: maxWidth, align: 'center' });
+    doc.moveDown(0.8);
+    doc.x = left;
+  });
+
+  if (videos.length) {
+    doc.x = left;
+    doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
+    videos.forEach((f) => {
+      let label = f.original_name;
+      if (f.caption) label += ` — ${f.caption}`;
+      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+    });
+    doc.moveDown(0.5);
+  }
+}
+
 function addPhotosSection(doc, files, reference) {
-  const images = files.filter((f) => f.kind === 'photo' || f.kind === 'received_photo');
-  const videos = files.filter((f) => f.kind === 'video' || f.kind === 'received_video');
+  const images = files.filter((f) => f.kind === 'photo');
+  const videos = files.filter((f) => f.kind === 'video');
 
   if (!images.length && !videos.length) return;
 
@@ -198,7 +267,7 @@ function addPhotosSection(doc, files, reference) {
     doc.x = left;
     doc.y = y + renderHeight + 6;
 
-    let label = f.kind === 'received_photo' ? `${f.original_name} (Item Received Condition)` : f.original_name;
+    let label = f.original_name;
     if (f.caption) label += ` — ${f.caption}`;
     doc.fontSize(9).fillColor('#64748b').text(label, left, doc.y, { width: maxWidth, align: 'center' });
     doc.moveDown(0.8);
@@ -210,7 +279,7 @@ function addPhotosSection(doc, files, reference) {
     doc.moveDown(0.3);
     doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
     videos.forEach((f) => {
-      let label = f.kind === 'received_video' ? `${f.original_name} (Item Received Condition)` : f.original_name;
+      let label = f.original_name;
       if (f.caption) label += ` — ${f.caption}`;
       doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
     });
