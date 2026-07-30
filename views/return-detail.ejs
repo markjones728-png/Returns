@@ -4,7 +4,6 @@
   <h1><%= r.reference %></h1>
   <span class="status-pill big" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span>
   <a class="btn btn-secondary" href="/returns/<%= r.id %>/pdf">Download PDF Report</a>
-  <a class="btn btn-secondary" href="/returns/<%= r.id %>/rt-form.pdf">Download Roger Technology RMA Form</a>
   <form action="/returns/<%= r.id %>/send-report" method="POST" class="inline-form">
     <button type="submit" class="btn btn-secondary">Email Report to Customer</button>
   </form>
@@ -216,52 +215,14 @@
 </div>
 
 <div class="card" id="inspection">
-  <h2>Roger Technology Inspection Form</h2>
+  <h2>Roger Technology Warranty Repair Return Form</h2>
   <p class="muted">
-    Fill this in when the unit is received and inspected. It captures the same information as
-    Roger Technology's own "Request for Authorisation to Return Product for Inspection" form, so a
-    filled copy of their form can be generated straight from here and emailed to
-    service@rogertechnology.it.
-  </p>
-  <p class="muted">
-    <strong>Dealer Details (fixed):</strong> <%= DEALER_DETAILS.tradingName %>, <%= DEALER_DETAILS.operator %>,
-    <%= DEALER_DETAILS.telephone %>, <%= DEALER_DETAILS.email %>
+    Matches Roger Technology's own "Warranty Repair Return Form". The customer/company details,
+    product/serial number, and fault description are already captured above and don't need
+    repeating here - this only covers what that form asks for that isn't captured elsewhere.
   </p>
   <form action="/returns/<%= r.id %>/inspection" method="POST" class="form-grid">
-    <h2 class="full section-heading">Installation Details</h2>
-    <label>Application Type
-      <select name="insp_application_type">
-        <option value="">-- Select --</option>
-        <% APPLICATION_TYPES.forEach(o => { %>
-          <option value="<%= o %>" <%= r.insp_application_type === o ? 'selected' : '' %>><%= o %></option>
-        <% }) %>
-      </select>
-    </label>
-    <label>Door / Product Type
-      <select name="insp_product_type">
-        <option value="">-- Select --</option>
-        <% PRODUCT_TYPES.forEach(o => { %>
-          <option value="<%= o %>" <%= r.insp_product_type === o ? 'selected' : '' %>><%= o %></option>
-        <% }) %>
-      </select>
-    </label>
-    <label>Dimensions
-      <input type="text" name="insp_dimensions" value="<%= r.insp_dimensions %>" placeholder="e.g. 4m x 2m" />
-    </label>
-    <label>Weight
-      <input type="text" name="insp_weight" value="<%= r.insp_weight %>" placeholder="e.g. 120kg" />
-    </label>
-    <label>Installation Date
-      <input type="date" name="insp_install_date" value="<%= r.insp_install_date %>" />
-    </label>
-
-    <h2 class="full section-heading">Product Details</h2>
-    <label>Product Code
-      <input type="text" name="insp_product_code" value="<%= r.insp_product_code %>" />
-    </label>
-    <label>Quantity
-      <input type="text" name="insp_quantity" value="<%= r.insp_quantity %>" />
-    </label>
+    <h2 class="full section-heading">Product Information</h2>
     <label>Original Invoice / Order Number
       <input type="text" name="insp_invoice_number" value="<%= r.insp_invoice_number %>" />
     </label>
@@ -281,58 +242,8 @@
         <% }) %>
       </select>
     </label>
-    <label>Warranty Status
-      <select name="insp_guarantee_status">
-        <option value="">-- Select --</option>
-        <% WARRANTY_STATUSES.forEach(o => { %>
-          <option value="<%= o %>" <%= r.insp_guarantee_status === o ? 'selected' : '' %>><%= o %></option>
-        <% }) %>
-      </select>
-    </label>
 
-    <h2 class="full section-heading">Nameplate Data</h2>
-    <label>P.CODE
-      <input type="text" name="insp_plate_p_code" value="<%= r.insp_plate_p_code %>" />
-    </label>
-    <label>Voltage
-      <input type="text" name="insp_plate_voltage" value="<%= r.insp_plate_voltage %>" />
-    </label>
-    <label>Batch
-      <input type="text" name="insp_plate_batch" value="<%= r.insp_plate_batch %>" />
-    </label>
-    <label>IN
-      <input type="text" name="insp_plate_in" value="<%= r.insp_plate_in %>" />
-    </label>
-    <label>PM
-      <input type="text" name="insp_plate_pm" value="<%= r.insp_plate_pm %>" />
-    </label>
-
-    <h2 class="full section-heading">Problem Found</h2>
-    <label class="full">Problem Identified by Client
-      <textarea name="insp_problem_by_client" rows="2"><%= r.insp_problem_by_client %></textarea>
-    </label>
-    <label class="full">Problem Identified by Dealer / Engineer
-      <textarea name="insp_problem_by_dealer" rows="2"><%= r.insp_problem_by_dealer %></textarea>
-    </label>
-    <label class="full">Action Suggested
-      <textarea name="insp_action_suggested" rows="2"><%= r.insp_action_suggested %></textarea>
-    </label>
-    <label>Repairable?
-      <select name="insp_repairable">
-        <option value="">-- Select --</option>
-        <% REPAIRABLE_OPTIONS.forEach(o => { %>
-          <option value="<%= o %>" <%= r.insp_repairable === o ? 'selected' : '' %>><%= o %></option>
-        <% }) %>
-      </select>
-    </label>
-    <label>Request Type
-      <select name="insp_request_type">
-        <option value="">-- Select --</option>
-        <% REQUEST_TYPES.forEach(o => { %>
-          <option value="<%= o %>" <%= r.insp_request_type === o ? 'selected' : '' %>><%= o %></option>
-        <% }) %>
-      </select>
-    </label>
+    <h2 class="full section-heading">Reported Fault</h2>
     <label>When Does the Fault Occur?
       <select name="insp_fault_occurrence">
         <option value="">-- Select --</option>
