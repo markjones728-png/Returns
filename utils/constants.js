@@ -55,9 +55,6 @@ const STATUS_COLORS = {
 // --- Options for the Roger Technology inspection/test form ---
 const APPLICATION_TYPES = ['Residential', 'Commercial', 'Industrial', 'Other'];
 const PRODUCT_TYPES = ['Sliding Gate', 'Swing Gate', 'Barrier', 'Bollard', 'Garage Door', 'Industrial Door', 'Other'];
-const WARRANTY_STATUSES = ['In Warranty', 'Out Warranty', 'Unknown'];
-const REPAIRABLE_OPTIONS = ['Repairable', 'Not Repairable', 'Unknown'];
-const REQUEST_TYPES = ['Return to Roger Technology for Inspection', 'Request for Quote Only'];
 // 'Intermittent Fault Found' and 'Unable to Test' were added to match the
 // Roger Technology Warranty Repair Return Form's Bench Test Result options -
 // the original three are kept as-is so existing saved returns still show
@@ -103,8 +100,8 @@ const DEALER_DETAILS = {
 
 module.exports = {
   STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
-  APPLICATION_TYPES, PRODUCT_TYPES, WARRANTY_STATUSES,
-  REPAIRABLE_OPTIONS, REQUEST_TYPES, TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+  APPLICATION_TYPES, PRODUCT_TYPES,
+  TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
   WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS
 };
