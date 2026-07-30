@@ -127,13 +127,7 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
       <strong>Original invoice / order number:</strong> ${escapeHtml(returnRecord.insp_invoice_number)}<br/>
       <strong>Product type (Roger component):</strong> ${escapeHtml(returnRecord.insp_rt_product_type)}<br/>
       <strong>Age of installation:</strong> ${escapeHtml(returnRecord.insp_installation_age)}<br/>
-      <strong>Warranty status:</strong> ${escapeHtml(returnRecord.insp_guarantee_status)}<br/>
-      <strong>Problem identified by client:</strong> ${escapeHtml(returnRecord.insp_problem_by_client)}<br/>
-      <strong>Problem identified by dealer/engineer:</strong> ${escapeHtml(returnRecord.insp_problem_by_dealer)}<br/>
       <strong>When does the fault occur:</strong> ${escapeHtml(returnRecord.insp_fault_occurrence)}<br/>
-      <strong>Action suggested:</strong> ${escapeHtml(returnRecord.insp_action_suggested)}<br/>
-      <strong>Repairable:</strong> ${escapeHtml(returnRecord.insp_repairable)}<br/>
-      <strong>Request type:</strong> ${escapeHtml(returnRecord.insp_request_type)}<br/>
       <strong>Manufacturer RMA number:</strong> ${escapeHtml(returnRecord.manufacturer_rma_number)}<br/>
       <strong>RTA RT number:</strong> ${escapeHtml(returnRecord.rta_rt_number)}<br/>
       <strong>Test result:</strong> ${escapeHtml(returnRecord.test_result)}<br/>
