@@ -7,10 +7,10 @@
 
 <form action="/track" method="POST" class="card form-grid">
   <label>Reference Number *
-    <input type="text" name="reference" placeholder="RT-2026-0001" required />
+    <input type="text" name="reference" placeholder="RT-2026-0001" value="<%= prefill ? prefill.reference : '' %>" required />
   </label>
   <label>Email Address *
-    <input type="email" name="email" required />
+    <input type="email" name="email" value="<%= prefill ? prefill.email : '' %>" required />
   </label>
   <button type="submit" class="btn btn-primary full">Track Return</button>
 </form>
@@ -49,4 +49,5 @@
   </div>
 <% } %>
 
+<%- include('partials/footer') %>
 <%- include('partials/footer') %>
