@@ -320,8 +320,11 @@ router.post('/returns/:id/status', async (req, res) => {
 
   // The customer is always emailed whenever the status actually changes, so
   // they're kept up to date automatically without staff needing to remember.
+  // The link takes them straight to their report on the Track a Return page,
+  // with their reference/email already filled in.
   if (statusChanged) {
-    await sendStatusUpdateEmail(updated);
+    const trackUrl = `${baseUrl(req)}/track?reference=${encodeURIComponent(updated.reference)}&email=${encodeURIComponent(updated.email)}`;
+    await sendStatusUpdateEmail(updated, trackUrl);
   }
 
   // When a return reaches "Return Closed", send the full record to the
