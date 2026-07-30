@@ -72,19 +72,46 @@ router.post('/submit', (req, res, next) => {
   res.render('submit-success', { reference });
 });
 
-// Public tracking: customer looks up their return with reference + email
+// Public tracking: customer looks up their return with reference + email.
+// Also supports a direct link with ?reference=&email= (used by the status
+// update email's "View your return report here" button) so the customer
+// lands straight on their report instead of an empty form.
 router.get('/track', (req, res) => {
-  res.render('track', { error: null, result: null });
-});
+  const { reference, email } = req.query;
+  const prefill = (reference || email) ? { reference: reference || '', email: email || '' } : null;
 
-router.post('/track', (req, res) => {
-  const { reference, email } = req.body;
+  if (!reference || !email) {
+    return res.render('track', { error: null, result: null, prefill });
+  }
+
   const returnRow = db.prepare(
     'SELECT * FROM returns WHERE reference = ? AND email = ?'
   ).get((reference || '').trim(), (email || '').trim());
 
   if (!returnRow) {
-    return res.render('track', { error: 'No matching return found. Check your reference and email.', result: null });
+    return res.render('track', { error: 'No matching return found. Check your reference and email.', result: null, prefill });
+  }
+
+  const history = db.prepare(
+    'SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC'
+  ).all(returnRow.id);
+
+  const files = db.prepare(
+    `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video') ORDER BY uploaded_at ASC`
+  ).all(returnRow.id);
+
+  res.render('track', { error: null, result: { returnRow, history, files }, prefill });
+});
+
+router.post('/track', (req, res) => {
+  const { reference, email } = req.body;
+  const prefill = { reference: reference || '', email: email || '' };
+  const returnRow = db.prepare(
+    'SELECT * FROM returns WHERE reference = ? AND email = ?'
+  ).get((reference || '').trim(), (email || '').trim());
+
+  if (!returnRow) {
+    return res.render('track', { error: 'No matching return found. Check your reference and email.', result: null, prefill });
   }
 
   const history = db.prepare(
@@ -97,7 +124,7 @@ router.post('/track', (req, res) => {
     `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video') ORDER BY uploaded_at ASC`
   ).all(returnRow.id);
 
-  res.render('track', { error: null, result: { returnRow, history, files } });
+  res.render('track', { error: null, result: { returnRow, history, files }, prefill });
 });
 
 // Public: same reference+email check as the lookup above, then stream the
