@@ -71,41 +71,24 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
     ]);
   }
 
-  // Internal-only: full product/nameplate identification from the
-  // inspection form. Excluded from the customer-facing copy.
-  if (internal && (returnRecord.insp_product_code || returnRecord.insp_quantity || returnRecord.insp_invoice_number || returnRecord.insp_rt_product_type || returnRecord.insp_installation_age || returnRecord.insp_guarantee_status)) {
+  // Internal-only: identification details from the Warranty Repair Return
+  // Form's "Product Information" section. Excluded from the customer-facing
+  // copy.
+  if (internal && (returnRecord.insp_invoice_number || returnRecord.insp_rt_product_type || returnRecord.insp_installation_age)) {
     section(doc, 'Product Details', [
-      ['Product code', returnRecord.insp_product_code],
-      ['Quantity', returnRecord.insp_quantity],
       ['Original invoice / order number', returnRecord.insp_invoice_number],
       ['Product type (Roger component)', returnRecord.insp_rt_product_type],
-      ['Age of installation', returnRecord.insp_installation_age],
-      ['Warranty status', returnRecord.insp_guarantee_status]
-    ]);
-  }
-
-  if (internal && (returnRecord.insp_plate_p_code || returnRecord.insp_plate_voltage || returnRecord.insp_plate_batch || returnRecord.insp_plate_in || returnRecord.insp_plate_pm)) {
-    section(doc, 'Nameplate Data', [
-      ['P.CODE', returnRecord.insp_plate_p_code],
-      ['Voltage', returnRecord.insp_plate_voltage],
-      ['Batch', returnRecord.insp_plate_batch],
-      ['IN', returnRecord.insp_plate_in],
-      ['PM', returnRecord.insp_plate_pm]
+      ['Age of installation', returnRecord.insp_installation_age]
     ]);
   }
 
   section(doc, 'Fault Description', [[null, returnRecord.fault_description]]);
 
-  // Internal-only: the engineer's own diagnosis notes. Excluded from the
-  // customer-facing copy since these can be frank/internal in tone.
-  if (internal && (returnRecord.insp_problem_by_client || returnRecord.insp_problem_by_dealer || returnRecord.insp_action_suggested || returnRecord.insp_repairable || returnRecord.insp_request_type || returnRecord.insp_fault_occurrence)) {
-    section(doc, 'Problem Found', [
-      ['Problem identified by client', returnRecord.insp_problem_by_client],
-      ['Problem identified by dealer/engineer', returnRecord.insp_problem_by_dealer],
-      ['When does the fault occur', returnRecord.insp_fault_occurrence],
-      ['Action suggested', returnRecord.insp_action_suggested],
-      ['Repairable', returnRecord.insp_repairable],
-      ['Request type', returnRecord.insp_request_type]
+  // Internal-only: matches the Warranty Repair Return Form's "Reported
+  // Fault" section. Excluded from the customer-facing copy.
+  if (internal && returnRecord.insp_fault_occurrence) {
+    section(doc, 'Reported Fault', [
+      ['When does the fault occur', returnRecord.insp_fault_occurrence]
     ]);
   }
 
