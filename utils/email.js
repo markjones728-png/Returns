@@ -56,13 +56,18 @@ async function sendReturnSubmittedEmail(returnRecord) {
   return sendMail({ to: returnRecord.email, subject, html });
 }
 
-async function sendStatusUpdateEmail(returnRecord) {
+// trackUrl (optional) is a link straight back to this return on the public
+// Track a Return page - see routes/returns.js, which builds it with the
+// reference/email already filled in so the customer doesn't have to retype
+// anything.
+async function sendStatusUpdateEmail(returnRecord, trackUrl) {
   const subject = `Update on your return ${returnRecord.reference}: ${returnRecord.status}`;
   const html = `
     <p>Dear ${escapeHtml(returnRecord.contact_name)},</p>
     <p>The status of your return <strong>${escapeHtml(returnRecord.reference)}</strong>
     (${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)}) has been updated to:</p>
     <p style="font-size:16px;"><strong>${escapeHtml(returnRecord.status)}</strong></p>
+    ${trackUrl ? `<p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#0284c7;color:#fff;text-decoration:none;border-radius:6px;">View your return report here &raquo;</a></p>` : ''}
     <p>Kind regards,<br/>Returns Team</p>
   `;
   return sendMail({ to: returnRecord.email, subject, html });
