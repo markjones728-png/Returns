@@ -30,7 +30,7 @@
       <% }) %>
     </ul>
 
-    <h3>Photos &amp; Videos</h3>
+    <h3>Photos, Videos &amp; Documents</h3>
     <div class="media-grid">
       <% result.files.forEach(f => { %>
         <div class="media-item">
@@ -38,16 +38,20 @@
             <a href="/track/files/<%= f.filename %>?<%= pdfQs %>" target="_blank">
               <img src="/track/files/<%= f.filename %>?<%= pdfQs %>" alt="<%= f.original_name %>" />
             </a>
-          <% } else { %>
+          <% } else if (f.kind === 'video') { %>
             <video controls src="/track/files/<%= f.filename %>?<%= pdfQs %>"></video>
+          <% } else { %>
+            <a class="doc-tile" href="/track/files/<%= f.filename %>?<%= pdfQs %>" target="_blank">
+              <span class="doc-icon">📄</span>
+              <span class="doc-label">PDF</span>
+            </a>
           <% } %>
           <div class="media-caption"><%= f.original_name %></div>
         </div>
       <% }) %>
-      <% if (result.files.length === 0) { %><p class="muted">No photos or videos yet.</p><% } %>
+      <% if (result.files.length === 0) { %><p class="muted">No photos, videos or documents yet.</p><% } %>
     </div>
   </div>
 <% } %>
 
-<%- include('partials/footer') %>
 <%- include('partials/footer') %>
