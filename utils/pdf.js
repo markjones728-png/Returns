@@ -52,11 +52,12 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
   ]);
 
   // Internal-only: how the item looked/what was in the box on arrival,
-  // plus any received-condition photos/videos shown directly underneath.
-  // Deliberately excluded when this PDF is built for the customer.
+  // plus any received-condition photos/videos/documents shown directly
+  // underneath. Deliberately excluded when this PDF is built for the customer.
   const receivedPhotos = (files || []).filter((f) => f.kind === 'received_photo');
   const receivedVideos = (files || []).filter((f) => f.kind === 'received_video');
-  const hasReceivedMedia = receivedPhotos.length > 0 || receivedVideos.length > 0;
+  const receivedDocuments = (files || []).filter((f) => f.kind === 'received_document');
+  const hasReceivedMedia = receivedPhotos.length > 0 || receivedVideos.length > 0 || receivedDocuments.length > 0;
 
   if (internal && (returnRecord.received_parts_status || returnRecord.received_notes || returnRecord.received_condition_flags || hasReceivedMedia)) {
     section(doc, 'Item Received Condition', [
@@ -65,7 +66,7 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
       ['Notes', returnRecord.received_notes]
     ]);
     if (hasReceivedMedia) {
-      renderMediaInline(doc, receivedPhotos, receivedVideos, returnRecord.reference);
+      renderMediaInline(doc, receivedPhotos, receivedVideos, receivedDocuments, returnRecord.reference);
     }
   }
 
@@ -155,10 +156,11 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
   }
 }
 
-// Draws a list of images (and a text-only list of videos) at the current
-// cursor position, with no page break or heading of its own - used to embed
-// received-condition photos right under the Item Received Condition text.
-function renderMediaInline(doc, images, videos, reference) {
+// Draws a list of images (and text-only lists of videos/documents) at the
+// current cursor position, with no page break or heading of its own - used
+// to embed received-condition photos right under the Item Received
+// Condition text.
+function renderMediaInline(doc, images, videos, documents, reference) {
   const maxWidth = 495;
   const maxHeight = 320;
   const left = doc.page.margins.left;
@@ -213,16 +215,28 @@ function renderMediaInline(doc, images, videos, reference) {
     });
     doc.moveDown(0.5);
   }
+
+  if (documents.length) {
+    doc.x = left;
+    doc.fontSize(10).fillColor('#475569').text('Documents (view in the Returns Portal - not embedded in this PDF):');
+    documents.forEach((f) => {
+      let label = f.original_name;
+      if (f.caption) label += ` — ${f.caption}`;
+      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+    });
+    doc.moveDown(0.5);
+  }
 }
 
 function addPhotosSection(doc, files, reference) {
   const images = files.filter((f) => f.kind === 'photo');
   const videos = files.filter((f) => f.kind === 'video');
+  const documents = files.filter((f) => f.kind === 'document');
 
-  if (!images.length && !videos.length) return;
+  if (!images.length && !videos.length && !documents.length) return;
 
   doc.addPage();
-  doc.fontSize(13).fillColor('#0f172a').text('Photos & Videos');
+  doc.fontSize(13).fillColor('#0f172a').text('Photos, Videos & Documents');
   doc.moveDown(0.3);
 
   const maxWidth = 495;
@@ -279,6 +293,17 @@ function addPhotosSection(doc, files, reference) {
     doc.moveDown(0.3);
     doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
     videos.forEach((f) => {
+      let label = f.original_name;
+      if (f.caption) label += ` — ${f.caption}`;
+      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+    });
+  }
+
+  if (documents.length) {
+    doc.x = left;
+    doc.moveDown(0.3);
+    doc.fontSize(10).fillColor('#475569').text('Documents (view in the Returns Portal - not embedded in this PDF):');
+    documents.forEach((f) => {
       let label = f.original_name;
       if (f.caption) label += ` — ${f.caption}`;
       doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
