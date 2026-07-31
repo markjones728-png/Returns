@@ -97,7 +97,7 @@ router.get('/track', (req, res) => {
   ).all(returnRow.id);
 
   const files = db.prepare(
-    `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video') ORDER BY uploaded_at ASC`
+    `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video', 'document') ORDER BY uploaded_at ASC`
   ).all(returnRow.id);
 
   res.render('track', { error: null, result: { returnRow, history, files }, prefill });
@@ -118,10 +118,10 @@ router.post('/track', (req, res) => {
     'SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC'
   ).all(returnRow.id);
 
-  // Only general photos/videos - the Item Received Condition uploads stay
-  // internal/staff-only, same as on the staff-side report.
+  // Only general photos/videos/documents - the Item Received Condition
+  // uploads stay internal/staff-only, same as on the staff-side report.
   const files = db.prepare(
-    `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video') ORDER BY uploaded_at ASC`
+    `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video', 'document') ORDER BY uploaded_at ASC`
   ).all(returnRow.id);
 
   res.render('track', { error: null, result: { returnRow, history, files }, prefill });
@@ -154,7 +154,7 @@ router.get('/track/files/:filename', (req, res) => {
   if (!returnRow) return res.status(404).send('Not found.');
 
   const file = db.prepare(
-    `SELECT * FROM return_files WHERE return_id = ? AND filename = ? AND kind IN ('photo', 'video')`
+    `SELECT * FROM return_files WHERE return_id = ? AND filename = ? AND kind IN ('photo', 'video', 'document')`
   ).get(returnRow.id, req.params.filename);
   if (!file) return res.status(404).send('Not found.');
 
