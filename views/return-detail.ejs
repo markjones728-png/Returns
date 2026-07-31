@@ -160,14 +160,19 @@
     internal/staff use only - it is never included in anything emailed to the customer.
   </p>
   <div class="media-grid">
-    <% files.filter(f => f.kind === 'received_photo' || f.kind === 'received_video').forEach(f => { %>
+    <% files.filter(f => f.kind === 'received_photo' || f.kind === 'received_video' || f.kind === 'received_document').forEach(f => { %>
       <div class="media-item">
         <% if (f.kind === 'received_photo') { %>
           <a href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
             <img src="/files/<%= r.id %>/<%= f.filename %>" alt="<%= f.original_name %>" />
           </a>
-        <% } else { %>
+        <% } else if (f.kind === 'received_video') { %>
           <video controls src="/files/<%= r.id %>/<%= f.filename %>"></video>
+        <% } else { %>
+          <a class="doc-tile" href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
+            <span class="doc-icon">📄</span>
+            <span class="doc-label">PDF</span>
+          </a>
         <% } %>
         <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
         <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form">
@@ -177,13 +182,13 @@
         </form>
       </div>
     <% }) %>
-    <% if (!files.some(f => f.kind === 'received_photo' || f.kind === 'received_video')) { %>
-      <p class="muted">No received-condition photos uploaded yet.</p>
+    <% if (!files.some(f => f.kind === 'received_photo' || f.kind === 'received_video' || f.kind === 'received_document')) { %>
+      <p class="muted">No received-condition photos, videos or documents uploaded yet.</p>
     <% } %>
   </div>
   <form action="/returns/<%= r.id %>/received" method="POST" enctype="multipart/form-data" class="form-grid">
-    <label class="full">Upload photos of the item as received
-      <input type="file" name="files" multiple accept="image/*,video/*" />
+    <label class="full">Upload photos, videos or PDF documents of the item as received
+      <input type="file" name="files" multiple accept="image/*,video/*,application/pdf" />
     </label>
     <label class="full">Parts Status</label>
     <div class="full radio-group">
@@ -384,17 +389,22 @@
 </div>
 
 <div class="card" id="photos">
-  <h2>Photos &amp; Videos</h2>
+  <h2>Photos, Videos &amp; Documents</h2>
   <div class="media-grid">
-    <% var generalFiles = files.filter(f => f.kind === 'photo' || f.kind === 'video'); %>
+    <% var generalFiles = files.filter(f => f.kind === 'photo' || f.kind === 'video' || f.kind === 'document'); %>
     <% generalFiles.forEach(f => { %>
       <div class="media-item">
         <% if (f.kind === 'photo') { %>
           <a href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
             <img src="/files/<%= r.id %>/<%= f.filename %>" alt="<%= f.original_name %>" />
           </a>
-        <% } else { %>
+        <% } else if (f.kind === 'video') { %>
           <video controls src="/files/<%= r.id %>/<%= f.filename %>"></video>
+        <% } else { %>
+          <a class="doc-tile" href="/files/<%= r.id %>/<%= f.filename %>" target="_blank">
+            <span class="doc-icon">📄</span>
+            <span class="doc-label">PDF</span>
+          </a>
         <% } %>
         <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
         <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form">
@@ -407,8 +417,8 @@
     <% if (generalFiles.length === 0) { %><p class="muted">No files uploaded yet.</p><% } %>
   </div>
   <form action="/returns/<%= r.id %>/files" method="POST" enctype="multipart/form-data" class="form-grid">
-    <label class="full">Upload additional photos/videos
-      <input type="file" name="files" multiple accept="image/*,video/*" />
+    <label class="full">Upload additional photos, videos or PDF documents
+      <input type="file" name="files" multiple accept="image/*,video/*,application/pdf" />
     </label>
     <button type="submit" class="btn btn-secondary full">Upload</button>
   </form>
