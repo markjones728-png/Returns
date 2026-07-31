@@ -83,15 +83,12 @@
     <input type="date" name="insp_install_date" value="<%= old.insp_install_date || '' %>" />
   </label>
 
-  <h2>Photos / Videos (optional)</h2>
-  <label class="full">Attach photos or videos of the fault
-    <input type="file" name="files" multiple accept="image/*,video/*" />
+  <h2>Photos / Videos / Documents (optional)</h2>
+  <label class="full">Attach photos, videos or PDF documents of the fault
+    <input type="file" name="files" multiple accept="image/*,video/*,application/pdf" />
   </label>
 
   <button type="submit" class="btn btn-primary full">Log Return</button>
-</form>
-
-<%- include('partials/footer') %>n btn-primary full">Log Return</button>
 </form>
 
 <%- include('partials/footer') %>
