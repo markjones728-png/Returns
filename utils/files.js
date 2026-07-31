@@ -18,7 +18,11 @@ function saveFilesToDisk(reference, files, kindPrefix) {
     const ext = path.extname(file.originalname) || '';
     const safeName = `${crypto.randomBytes(8).toString('hex')}${ext}`;
     fs.writeFileSync(path.join(dir, safeName), file.buffer);
-    const baseKind = file.mimetype.startsWith('video/') ? 'video' : 'photo';
+    const baseKind = file.mimetype.startsWith('video/')
+      ? 'video'
+      : file.mimetype === 'application/pdf'
+        ? 'document'
+        : 'photo';
     return {
       filename: safeName,
       original_name: file.originalname,
