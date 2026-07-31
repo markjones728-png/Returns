@@ -1,6 +1,6 @@
 const multer = require('multer');
 
-const ALLOWED_MIME = /^image\/|^video\//;
+const ALLOWED_MIME = /^image\/|^video\/|^application\/pdf$/;
 
 const storage = multer.memoryStorage();
 
@@ -14,7 +14,7 @@ const upload = multer({
     if (ALLOWED_MIME.test(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}. Only photos and videos are accepted.`));
+      cb(new Error(`Unsupported file type: ${file.mimetype}. Only photos, videos and PDF documents are accepted.`));
     }
   }
 });
