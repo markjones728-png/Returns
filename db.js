@@ -164,6 +164,13 @@ ensureColumn('users', 'email', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('users', 'notify_on_submitted', "INTEGER NOT NULL DEFAULT 0");
 ensureColumn('users', 'notify_on_completed', "INTEGER NOT NULL DEFAULT 0");
 
+// --- When this return was submitted, the timestamp of the customer ticking ---
+// --- every Terms & Conditions box on the Book in a Return page (see        ---
+// --- views/submit.ejs and routes/public.js). Kept as a record in case a    ---
+// --- return is disputed later. Left blank for returns staff log on a       ---
+// --- customer's behalf, since the terms are only shown on the public form. ---
+ensureColumn('returns', 'terms_accepted_at', "TEXT");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
