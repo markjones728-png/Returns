@@ -1,0 +1,41 @@
+<%- include('partials/header', { title: 'Backups' }) %>
+
+<h1>Data Backup</h1>
+
+<div class="card">
+  <h2>Download a Full Backup</h2>
+  <p class="muted">
+    This downloads a single .zip file containing every return, its full status history,
+    staff accounts (without passwords), and every uploaded photo/video - a complete,
+    independent snapshot you can keep somewhere safe (e.g. a shared company drive).
+  </p>
+  <a class="btn btn-primary" href="/backup/download">Download Backup (.zip)</a>
+</div>
+
+<div class="card">
+  <h2>Automatic Daily Backup</h2>
+  <p class="muted">
+    On top of downloading one manually above, the exact same backup can be emailed out
+    automatically once a day - no need to remember to do it yourself. Turn it on for whichever
+    staff should receive it from the <strong>Email Notifications</strong> area on the
+    <a href="/users">Staff Accounts</a> page (look for the "Daily Backup" column). It only sends
+    while at least one person is opted in - nobody is opted in by default.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Good habits</h2>
+  <p class="muted">A few sensible ways to use this:</p>
+  <ul>
+    <li>Download one now, and make it a habit every week or month.</li>
+    <li>Keep at least one copy somewhere other than this computer (e.g. shared drive, email to yourself).</li>
+    <li>Grab one before any big change - a Render plan change, a big app update, etc.</li>
+  </ul>
+  <p class="muted">
+    This is a safety net on top of your hosting, not a replacement for it. If the app is still
+    on Render's free plan, its data can be wiped by every restart regardless of how often you
+    back up - ask about switching to a paid plan with a permanent disk if that hasn't been done yet.
+  </p>
+</div>
+
+<%- include('partials/footer') %>
