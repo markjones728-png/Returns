@@ -109,8 +109,13 @@
     <h2>Customer Details</h2>
     <p><strong>Company:</strong> <%= r.company_name %></p>
     <p><strong>Contact:</strong> <%= r.contact_name %></p>
-    <p><strong>Phone:</strong> <%= r.phone %></p>
+   <p><strong>Phone:</strong> <%= r.phone %></p>
     <p><strong>Email:</strong> <%= r.email %></p>
+    <% if (r.terms_accepted_at) { %>
+      <p class="muted">Terms &amp; Conditions accepted by customer on <%= new Date(r.terms_accepted_at).toLocaleString('en-GB') %></p>
+    <% } else { %>
+      <p class="muted">Terms &amp; Conditions: not applicable (this return was logged by staff)</p>
+    <% } %>
   </div>
 
   <div class="card">
