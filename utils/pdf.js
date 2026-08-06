@@ -110,11 +110,12 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
 
   // Internal-only: final warranty decision, matching the Warranty Repair
   // Return Form's section 5. Excluded from the customer-facing copy.
-  if (internal && (returnRecord.insp_warranty_verdict || returnRecord.insp_rejection_reason || returnRecord.insp_action_taken || returnRecord.insp_warranty_summary)) {
+ if (internal && (returnRecord.insp_warranty_verdict || returnRecord.insp_rejection_reason || returnRecord.insp_action_taken || returnRecord.fault_category || returnRecord.insp_warranty_summary)) {
     section(doc, 'Warranty Determination & Final Verdict', [
       ['Final status', returnRecord.insp_warranty_verdict],
       ['Reason for rejection', returnRecord.insp_rejection_reason],
       ['Action taken', returnRecord.insp_action_taken],
+      ['Fault category', returnRecord.fault_category],
       ['Technician summary', returnRecord.insp_warranty_summary]
     ]);
   }
