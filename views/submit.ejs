@@ -55,6 +55,7 @@
   <label class="full">Description of Fault *
     <textarea name="fault_description" rows="5" required><%= old.fault_description || '' %></textarea>
   </label>
+  <p class="full muted" style="margin:-8px 0 0;">Please give details of the full fault. Failure to do so may result in your return being refused.</p>
 
   <h2>Installation Details (if known)</h2>
   <label>Application Type
@@ -87,6 +88,111 @@
   <label class="full">Attach photos, videos or PDF documents of the fault
     <input type="file" name="files" multiple accept="image/*,video/*,application/pdf" />
   </label>
+
+  <h2 class="full section-heading">Terms &amp; Declarations</h2>
+  <p class="full muted" style="margin-top:-8px;">Please read and tick each statement below - all of them must be accepted before your return can be submitted.</p>
+
+  <div class="full terms-block">
+    <h3>Returning Goods to the Company</h3>
+    <p>To return any item, you must first complete the online returns form. This form should include the reason for the return, your details, and who to contact with questions.</p>
+    <p>Once you submit the form, you'll receive a Return Merchandise Authorisation (RMA) number. This number must be clearly written on both the outside of the package and on a slip inside. If the package doesn't have an RMA number, the company cannot be held responsible for the goods and may dispose of them as they see fit.</p>
+    <p>You are responsible for ensuring the goods are packaged properly to prevent damage during shipping. The company is not liable for items damaged in transit.</p>
+    <label class="checkbox-label">
+      <input type="checkbox" name="terms_returning_goods" required />
+      I have read and accept the above *
+    </label>
+  </div>
+
+  <div class="full terms-block">
+    <h3>Collection of Your Return</h3>
+    <p>We will provide you with a specific collection date for your return. Please ensure your package is ready in advance, as failed collection attempts may incur a fee.</p>
+    <label class="checkbox-label">
+      <input type="checkbox" name="terms_collection_date" required />
+      I have read and accept the above *
+    </label>
+  </div>
+
+  <details class="full card terms-block">
+    <summary>Return to Stock &ndash; Return Merchandise Authorisation (RMA)</summary>
+    <h3>RETURN MERCHANDISE AUTHORISATION</h3>
+    <p>To return items that are surplus or ordered in error, all these conditions must be met:</p>
+    <ol>
+      <li><strong>Stocked Item Only:</strong> Must be a normally stocked item&mdash;no specially ordered goods.</li>
+      <li><strong>As-New Condition:</strong> Must be in as-new condition with unopened original packaging to allow immediate re-stocking.</li>
+      <li><strong>30-Day Window:</strong> Delivered within the last 30 days.</li>
+      <li><strong>10-Day Return:</strong> Returned within 10 days of the RMA being issued.</li>
+    </ol>
+    <p><strong>Re-stocking Fees and Condition Assessment:</strong> All accepted returns for unwanted goods are subject to a re-stocking charge:</p>
+    <ol>
+      <li><strong>Standard Re-stocking Fee:</strong> We will charge the greater of 20% of the original invoice value or &pound;10, plus any applicable VAT.</li>
+      <li><strong>Higher Re-stocking Fee:</strong> Goods that require an in-depth inspection before they can be re-stocked will incur a higher charge.</li>
+      <li><strong>Condition Rejection:</strong> If goods are returned but cannot be re-stocked due to their condition, used, or missing parts, they will be returned to you and no credit will be issued.</li>
+    </ol>
+    <p><strong>Required RMA Documentation:</strong> To process your RMA request, you must provide a reference number. Please ensure one of the following is entered in the RT Automation Sales Order/Purchase Order Number field on your returns form:</p>
+    <ol>
+      <li>Customer Original Purchase Order Number</li>
+      <li>RT Automation Sales Order Number</li>
+      <li>RT Automation Invoice Number</li>
+    </ol>
+    <label class="checkbox-label">
+      <input type="checkbox" name="terms_return_to_stock" required />
+      I accept the above Terms and Conditions *
+    </label>
+  </details>
+
+  <details class="full card terms-block">
+    <summary>Warranty Repair &ndash; Return Merchandise Authorisation (RMA)</summary>
+    <h3>RETURN MERCHANDISE AUTHORISATION</h3>
+    <p>It is the responsibility of the party returning the goods to ensure they are suitably packaged for transportation, the company cannot accept liability for goods which are damaged in transit whilst being returned to us.</p>
+    <ol>
+      <li>RT Automation warranty is supplied against manufacturing defect only. Goods will only be replaced or credited in exceptional circumstances and at the decision of the Company.</li>
+      <li>In the event a customer decides to purchase a new replacement, for an item they return as a warranty failure, should the returned item be repairable or found not to have a fault, it will be returned to the Customer in a working condition, rather than a credit being provided for the replacement item.</li>
+      <li>If the returned item had been found to fail for a non-warranty fault, including but not limited to wind damage, collision, excessive force, or electrical damage the item will not be repaired under the terms of our warranty. In such instances the customer will be contacted and given the option of chargeable repair, return of the item or scrapping thereof. If a chargeable repair is requested a quote including the parts required and labour cost will be provided and must be accepted in writing prior to any work being carried out.</li>
+    </ol>
+    <label class="checkbox-label">
+      <input type="checkbox" name="terms_warranty_repair" required />
+      I accept the above Terms &amp; Conditions *
+    </label>
+  </details>
+
+  <details class="full card terms-block">
+    <summary>Chargeable Repair &ndash; Request a Return Merchandise Authorisation (RMA)</summary>
+    <h3>Request a RETURN MERCHANDISE AUTHORISATION (RMA)</h3>
+    <ol>
+      <li>Complete the form to initiate the return process.</li>
+      <li>You will receive a Return Merchandise Authorisation (RMA) number from us and a collection date from our courier.</li>
+    </ol>
+    <p><strong>Returning Your Goods</strong></p>
+    <ol>
+      <li><strong>Mark the Package Clearly:</strong> Your RMA number must be clearly marked on both the outside of the returned package and on a slip placed inside the package.</li>
+      <li><strong>Packaging is Your Responsibility:</strong> It is your responsibility to ensure the goods are suitably packaged for transportation. We cannot accept liability for items damaged in transit while being returned to us.</li>
+      <li><strong>The No-RMA Policy:</strong> If you return goods without a valid RMA number clearly marked, and we cannot determine the source or other details of the goods, we will have no liability for them. We reserve the right to retain, destroy, dispose of, or otherwise deal with the goods as we see fit.</li>
+    </ol>
+    <p><strong>Inspection and Quotation</strong></p>
+    <ol>
+      <li>Once the RMA is issued and the goods are received, we will inspect the item.</li>
+      <li>We will then generate a quotation for the necessary parts and labour required to repair the item.</li>
+    </ol>
+    <p><strong>Quote Response and Repair Acceptance</strong></p>
+    <ol>
+      <li>Upon written acceptance of the quote, the goods will be repaired and returned to the address provided on your RMA request.</li>
+      <li>An invoice, including a return carriage charge, will be generated upon despatch of the repaired item.</li>
+    </ol>
+    <p><strong>Declining the Quote</strong> &mdash; if you decline the quote, you have two options.</p>
+    <ol>
+      <li>The goods can be returned to you in a disassembled condition, at your expense.</li>
+      <li>We will scrap the item upon request.</li>
+    </ol>
+    <p><strong>Time Limit for Response</strong></p>
+    <ol>
+      <li>You must respond to any quotation and instruct one of the above options (Accept, Return Disassembled, or Scrap) within 30 days of the quote's issue date.</li>
+      <li>If no response is received within this 30-day period, we may scrap the item.</li>
+    </ol>
+    <label class="checkbox-label">
+      <input type="checkbox" name="terms_chargeable_repair" required />
+      I accept the above Terms &amp; Conditions *
+    </label>
+  </details>
 
   <button type="submit" class="btn btn-primary full">Submit Return</button>
 </form>
