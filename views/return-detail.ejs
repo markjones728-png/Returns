@@ -296,7 +296,9 @@
   <h2>Warranty Determination &amp; Final Verdict</h2>
   <p class="muted">
     Internal/staff use only - fill this in once testing is complete to record the final warranty
-    decision. This is never included on anything emailed or shown to the customer.
+    decision. This is never included on anything emailed or shown to the customer. Fault Category
+    feeds into the Reports page, so it's worth taking a moment to pick the option that best matches
+    the root cause - that's what lets trends by equipment type show up there.
   </p>
   <form action="/returns/<%= r.id %>/warranty" method="POST" class="form-grid">
     <label>Final Status
@@ -320,6 +322,14 @@
         <option value="">-- Select --</option>
         <% ACTION_TAKEN_OPTIONS.forEach(o => { %>
           <option value="<%= o %>" <%= r.insp_action_taken === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Fault Category
+      <select name="fault_category">
+        <option value="">-- Select --</option>
+        <% FAULT_CATEGORIES.forEach(o => { %>
+          <option value="<%= o %>" <%= r.fault_category === o ? 'selected' : '' %>><%= o %></option>
         <% }) %>
       </select>
     </label>
