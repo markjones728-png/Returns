@@ -29,13 +29,13 @@
 <div class="card">
   <h2>Email Notifications</h2>
   <p class="muted">
-    Choose who gets emailed automatically when a new return is submitted, and when a return is
-    marked "Return Closed". Only staff with an email address set (use Edit above to add one) will
-    actually receive these, even if ticked below.
+    Choose who gets emailed automatically when a new return is submitted, when a return is
+    marked "Return Closed", and who gets the automatic daily backup. Only staff with an email
+    address set (use Edit above to add one) will actually receive these, even if ticked below.
   </p>
   <form action="/users/notifications" method="POST">
     <table class="table">
-      <thead><tr><th>Name</th><th>Email</th><th>New Submissions</th><th>Completed Returns</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>New Submissions</th><th>Completed Returns</th><th>Daily Backup</th></tr></thead>
       <tbody>
         <% users.forEach(u => { %>
           <tr>
@@ -46,6 +46,7 @@
             </td>
             <td><input type="checkbox" name="notify_submitted" value="<%= u.id %>" <%= u.notify_on_submitted ? 'checked' : '' %> /></td>
             <td><input type="checkbox" name="notify_completed" value="<%= u.id %>" <%= u.notify_on_completed ? 'checked' : '' %> /></td>
+            <td><input type="checkbox" name="notify_backup" value="<%= u.id %>" <%= u.notify_on_backup ? 'checked' : '' %> /></td>
           </tr>
         <% }) %>
       </tbody>
