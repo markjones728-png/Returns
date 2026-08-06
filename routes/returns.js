@@ -13,7 +13,8 @@ const {
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
-const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail } = require('../utils/email');
+const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail } = require('../utils/email');
+const { getNotifyRecipients } = require('../utils/notifications');
 const { generateReturnPdf, generateReturnPdfBuffer } = require('../utils/pdf');
 const { streamBackupZip } = require('../utils/backup');
 const { requireAuth, requireAdmin } = require('./auth');
@@ -101,6 +102,13 @@ router.post('/returns/new', (req, res, next) => {
   }
 
   await sendReturnSubmittedEmail(returnRow);
+
+  // Also alert whichever staff have opted in to "New Submissions" in the
+  // admin Email Notifications area, if any.
+  const submitRecipients = getNotifyRecipients('notify_on_submitted');
+  if (submitRecipients.length) {
+    await sendNewReturnStaffAlert(returnRow, submitRecipients, `${baseUrl(req)}/returns/${returnRow.id}`);
+  }
 
   res.redirect(`/returns/${returnRow.id}`);
 });
@@ -285,7 +293,7 @@ router.post('/returns/:id/archive', async (req, res) => {
 
   const updated = db.prepare('SELECT * FROM returns WHERE id = ?').get(returnRow.id);
   const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
-  await sendReturnCompletedEmail(updated, history);
+  await sendReturnCompletedEmail(updated, history, getNotifyRecipients('notify_on_completed'));
 
   res.redirect(`/returns/${returnRow.id}`);
 });
@@ -327,11 +335,12 @@ router.post('/returns/:id/status', async (req, res) => {
     await sendStatusUpdateEmail(updated, trackUrl);
   }
 
-  // When a return reaches "Return Closed", send the full record to the
-  // returns team's own inbox as well, so nothing is lost/forgotten.
+  // When a return reaches "Return Closed", send the full record to whichever
+  // staff have opted in to "Completed Returns" in the admin Email
+  // Notifications area, so nothing is lost/forgotten.
   if (status === CLOSED_STATUS) {
     const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
-    await sendReturnCompletedEmail(updated, history);
+    await sendReturnCompletedEmail(updated, history, getNotifyRecipients('notify_on_completed'));
   }
 
   res.redirect(`/returns/${returnRow.id}`);
@@ -461,7 +470,7 @@ router.get('/backup/download', requireAdmin, (req, res) => {
 
 // --- Admin: manage staff users ---
 function usersPageData() {
-  const users = db.prepare('SELECT id, username, name, role, created_at FROM users ORDER BY created_at ASC').all();
+  const users = db.prepare('SELECT id, username, name, role, email, notify_on_submitted, notify_on_completed, created_at FROM users ORDER BY created_at ASC').all();
   const invites = db.prepare(`
     SELECT * FROM invites WHERE accepted_at IS NULL ORDER BY created_at DESC
   `).all().map((inv) => ({ ...inv, expired: new Date(inv.expires_at) < new Date() }));
@@ -481,14 +490,14 @@ router.get('/users', requireAdmin, (req, res) => {
 });
 
 router.post('/users', requireAdmin, (req, res) => {
-  const { username, password, name, role } = req.body;
+  const { username, password, name, role, email } = req.body;
   if (!username || !password || !name) {
     return res.render('users', { ...usersPageData(), user: req.session.user, error: 'All fields are required.' });
   }
   const hash = bcrypt.hashSync(password, 10);
   try {
-    db.prepare('INSERT INTO users (username, password_hash, name, role) VALUES (?, ?, ?, ?)')
-      .run(username.trim(), hash, name.trim(), role === 'admin' ? 'admin' : 'staff');
+    db.prepare('INSERT INTO users (username, password_hash, name, role, email) VALUES (?, ?, ?, ?, ?)')
+      .run(username.trim(), hash, name.trim(), role === 'admin' ? 'admin' : 'staff', (email || '').trim());
     res.redirect('/users');
   } catch (e) {
     res.render('users', { ...usersPageData(), user: req.session.user, error: 'Username already exists.' });
@@ -522,7 +531,7 @@ router.post('/users/invite/:id/revoke', requireAdmin, (req, res) => {
 });
 
 router.get('/users/:id/edit', requireAdmin, (req, res) => {
-  const editUser = db.prepare('SELECT id, username, name, role FROM users WHERE id = ?').get(req.params.id);
+  const editUser = db.prepare('SELECT id, username, name, role, email FROM users WHERE id = ?').get(req.params.id);
   if (!editUser) return res.status(404).send('User not found.');
   res.render('user-edit', { editUser, user: req.session.user, error: null });
 });
@@ -531,7 +540,7 @@ router.post('/users/:id/edit', requireAdmin, (req, res) => {
   const editUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!editUser) return res.status(404).send('User not found.');
 
-  const { username, name, role, new_password } = req.body;
+  const { username, name, role, email, new_password } = req.body;
   const newRole = role === 'admin' ? 'admin' : 'staff';
 
   if (!username || !name) {
@@ -547,11 +556,11 @@ router.post('/users/:id/edit', requireAdmin, (req, res) => {
         return res.render('user-edit', { editUser, user: req.session.user, error: 'New password must be at least 8 characters.' });
       }
       const hash = bcrypt.hashSync(new_password, 10);
-      db.prepare('UPDATE users SET username = ?, name = ?, role = ?, password_hash = ? WHERE id = ?')
-        .run(username.trim(), name.trim(), newRole, hash, editUser.id);
+      db.prepare('UPDATE users SET username = ?, name = ?, role = ?, email = ?, password_hash = ? WHERE id = ?')
+        .run(username.trim(), name.trim(), newRole, (email || '').trim(), hash, editUser.id);
     } else {
-      db.prepare('UPDATE users SET username = ?, name = ?, role = ? WHERE id = ?')
-        .run(username.trim(), name.trim(), newRole, editUser.id);
+      db.prepare('UPDATE users SET username = ?, name = ?, role = ?, email = ? WHERE id = ?')
+        .run(username.trim(), name.trim(), newRole, (email || '').trim(), editUser.id);
     }
     // Keep the current session's displayed name/role in sync if editing yourself
     if (req.session.user.id === editUser.id) {
@@ -563,6 +572,28 @@ router.post('/users/:id/edit', requireAdmin, (req, res) => {
   } catch (e) {
     res.render('user-edit', { editUser, user: req.session.user, error: 'That username is already taken.' });
   }
+});
+
+// --- Admin: which staff get emailed automatically on a new submission,   ---
+// --- and which get emailed when a return is marked "Return Closed". A   ---
+// --- checkbox that isn't ticked simply doesn't appear in req.body, so    ---
+// --- every user is set explicitly (on if present in the array, off if   ---
+// --- not) rather than only ever turning things on.                      ---
+router.post('/users/notifications', requireAdmin, (req, res) => {
+  let submittedIds = req.body.notify_submitted || [];
+  if (!Array.isArray(submittedIds)) submittedIds = [submittedIds];
+  let completedIds = req.body.notify_completed || [];
+  if (!Array.isArray(completedIds)) completedIds = [completedIds];
+
+  const allUsers = db.prepare('SELECT id FROM users').all();
+  const updateStmt = db.prepare('UPDATE users SET notify_on_submitted = ?, notify_on_completed = ? WHERE id = ?');
+  allUsers.forEach((u) => {
+    const notifySubmitted = submittedIds.includes(String(u.id)) ? 1 : 0;
+    const notifyCompleted = completedIds.includes(String(u.id)) ? 1 : 0;
+    updateStmt.run(notifySubmitted, notifyCompleted, u.id);
+  });
+
+  res.redirect('/users');
 });
 
 router.post('/users/:id/delete', requireAdmin, (req, res) => {
