@@ -40,6 +40,15 @@ router.post('/submit', (req, res, next) => {
     return res.render('submit', { error: 'Please fill in all required fields.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
   }
 
+  // Every Terms & Conditions box on the form must be ticked - checked here as
+  // well as via the "required" attribute on each checkbox, in case a browser
+  // ever lets the form through without enforcing it client-side.
+  const TERMS_FIELDS = ['terms_returning_goods', 'terms_collection_date', 'terms_return_to_stock', 'terms_warranty_repair', 'terms_chargeable_repair'];
+  const allTermsAccepted = TERMS_FIELDS.every((f) => !!req.body[f]);
+  if (!allTermsAccepted) {
+    return res.render('submit', { error: 'Please tick every Terms & Conditions statement before submitting your return.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
+  }
+
   const reference = nextReference();
 
   db.prepare(`
@@ -47,9 +56,9 @@ router.post('/submit', (req, res, next) => {
       reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
       equipment_type, make, model, serial_number, fault_description,
       insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
-      status
+      status, terms_accepted_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted')
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted', datetime('now'))
   `).run(
     reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
     equipment_type, make, model, serial_number, fault_description,
