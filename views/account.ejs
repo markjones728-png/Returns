@@ -1,0 +1,25 @@
+<%- include('partials/header', { title: 'My Account' }) %>
+
+<h1>My Account</h1>
+<p class="muted">Signed in as <%= user.name %> (<%= user.username %>)</p>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (success) { %><div class="alert" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;"><%= success %></div><% } %>
+
+<div class="card">
+  <h2>Change Password</h2>
+  <form action="/account/password" method="POST" class="form-grid">
+    <label class="full">Current Password
+      <input type="password" name="current_password" required />
+    </label>
+    <label>New Password
+      <input type="password" name="new_password" required minlength="8" />
+    </label>
+    <label>Confirm New Password
+      <input type="password" name="confirm_password" required minlength="8" />
+    </label>
+    <button type="submit" class="btn btn-primary full">Update Password</button>
+  </form>
+</div>
+
+<%- include('partials/footer') %>
