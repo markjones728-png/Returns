@@ -41,8 +41,8 @@ router.post('/accept-invite/:token', (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   let userId;
   try {
-    const result = db.prepare('INSERT INTO users (username, password_hash, name, role) VALUES (?, ?, ?, ?)')
-      .run(username.trim(), hash, invite.name, invite.role);
+    const result = db.prepare('INSERT INTO users (username, password_hash, name, role, email) VALUES (?, ?, ?, ?, ?)')
+      .run(username.trim(), hash, invite.name, invite.role, invite.email);
     userId = result.lastInsertRowid;
   } catch (e) {
     return res.render('accept-invite', { invite, error: 'That username is already taken - please choose another.', old: req.body });
