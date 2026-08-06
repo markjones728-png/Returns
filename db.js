@@ -77,6 +77,14 @@ db.exec(`
     expires_at TEXT NOT NULL,
     accepted_at TEXT
   );
+
+  -- Small internal key/value store used for things like remembering the date
+  -- the automatic daily backup last ran (see utils/autoBackup.js) - not
+  -- related to any customer/return data.
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
 `);
 
 // --- Lightweight migrations: add any columns that don't exist yet on an  ---
@@ -170,6 +178,17 @@ ensureColumn('users', 'notify_on_completed', "INTEGER NOT NULL DEFAULT 0");
 // --- return is disputed later. Left blank for returns staff log on a       ---
 // --- customer's behalf, since the terms are only shown on the public form. ---
 ensureColumn('returns', 'terms_accepted_at', "TEXT");
+
+// --- One of FAULT_CATEGORIES (utils/constants.js), picked by staff as part  ---
+// --- of the Warranty Determination step, once they know what actually       ---
+// --- caused the fault. Used by the Reports page to spot trends (e.g. lots   ---
+// --- of "Manufacturing Defect" faults on one type of equipment).            ---
+ensureColumn('returns', 'fault_category', "TEXT NOT NULL DEFAULT ''");
+
+// Whether this staff member also receives the automatic daily backup email
+// (see utils/autoBackup.js) - a third opt-in alongside New Submissions and
+// Completed Returns in the admin Email Notifications area.
+ensureColumn('users', 'notify_on_backup', "INTEGER NOT NULL DEFAULT 0");
 
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
