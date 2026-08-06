@@ -73,11 +73,39 @@ async function sendStatusUpdateEmail(returnRecord, trackUrl) {
   return sendMail({ to: returnRecord.email, subject, html });
 }
 
+// Internal-only: sent to whichever staff have ticked "New Submissions" in
+// the Email Notifications area on the admin Users page (see
+// utils/notifications.js). Separate from sendReturnSubmittedEmail above,
+// which goes to the customer. Does nothing if nobody has opted in.
+async function sendNewReturnStaffAlert(returnRecord, recipients, viewUrl) {
+  if (!recipients || !recipients.length) return { skipped: true };
+
+  const subject = `New return submitted: ${returnRecord.reference} - ${returnRecord.company_name}`;
+  const html = `
+    <p>A new return has just been submitted.</p>
+    <p>
+      <strong>Reference:</strong> ${escapeHtml(returnRecord.reference)}<br/>
+      <strong>Company:</strong> ${escapeHtml(returnRecord.company_name)}<br/>
+      <strong>Contact:</strong> ${escapeHtml(returnRecord.contact_name)}<br/>
+      <strong>Equipment:</strong> ${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)} (Serial: ${escapeHtml(returnRecord.serial_number)})<br/>
+      <strong>Fault reported:</strong> ${escapeHtml(returnRecord.fault_description)}
+    </p>
+    ${viewUrl ? `<p><a href="${viewUrl}" style="display:inline-block;padding:10px 20px;background:#0284c7;color:#fff;text-decoration:none;border-radius:6px;">View this return in the portal &raquo;</a></p>` : ''}
+  `;
+  return sendMail({ to: recipients.join(', '), subject, html });
+}
+
 // Sent internally (not to the customer) once a return reaches "Return Closed",
 // so someone always gets a full record of the completed return by email -
 // a copy of everything captured, on top of what's stored in the app itself.
-async function sendReturnCompletedEmail(returnRecord, statusHistory = []) {
-  const notifyTo = process.env.RETURNS_NOTIFY_EMAIL || DEALER_DETAILS.email;
+// recipients is the list of staff who've ticked "Completed Returns" in the
+// admin Email Notifications area; if nobody has opted in yet, this falls
+// back to the old RETURNS_NOTIFY_EMAIL/dealer-email behaviour so nothing
+// silently goes unnoticed.
+async function sendReturnCompletedEmail(returnRecord, statusHistory = [], recipients = []) {
+  const notifyTo = (recipients && recipients.length)
+    ? recipients.join(', ')
+    : (process.env.RETURNS_NOTIFY_EMAIL || DEALER_DETAILS.email);
   const subject = `Return closed: ${returnRecord.reference} - ${returnRecord.company_name}`;
 
   const historyHtml = statusHistory
@@ -203,4 +231,4 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail };
+module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail };
