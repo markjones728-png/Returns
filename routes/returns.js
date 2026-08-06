@@ -9,7 +9,7 @@ const {
   APPLICATION_TYPES, PRODUCT_TYPES,
   TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
@@ -127,7 +127,7 @@ router.get('/returns/:id', (req, res) => {
     APPLICATION_TYPES, PRODUCT_TYPES,
     TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
     RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS,
+    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
     user: req.session.user
   });
 });
@@ -224,16 +224,16 @@ router.post('/returns/:id/warranty', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
-  const { insp_warranty_verdict, insp_rejection_reason, insp_action_taken, insp_warranty_summary } = req.body;
+  const { insp_warranty_verdict, insp_rejection_reason, insp_action_taken, fault_category, insp_warranty_summary } = req.body;
 
   db.prepare(`
     UPDATE returns SET
-      insp_warranty_verdict = ?, insp_rejection_reason = ?, insp_action_taken = ?, insp_warranty_summary = ?,
+      insp_warranty_verdict = ?, insp_rejection_reason = ?, insp_action_taken = ?, fault_category = ?, insp_warranty_summary = ?,
       warranty_completed_by = ?, warranty_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    insp_warranty_verdict || '', insp_rejection_reason || '', insp_action_taken || '', insp_warranty_summary || '',
+    insp_warranty_verdict || '', insp_rejection_reason || '', insp_action_taken || '', fault_category || '', insp_warranty_summary || '',
     req.session.user.name,
     returnRow.id
   );
@@ -468,9 +468,117 @@ router.get('/backup/download', requireAdmin, (req, res) => {
   streamBackupZip(res);
 });
 
+// --- Reports: fault-category trends and CSV exports of returns. Open to   ---
+// --- any logged-in staff member (like the dashboard), not admin-only,     ---
+// --- since it doesn't expose anything staff can't already see per-return. ---
+router.get('/reports', (req, res) => {
+  const { from, to } = req.query;
+
+  const clauses = [];
+  const params = [];
+  if (from) { clauses.push('date(created_at) >= date(?)'); params.push(from); }
+  if (to) { clauses.push('date(created_at) <= date(?)'); params.push(to); }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const rows = db.prepare(`SELECT status, equipment_type, fault_category FROM returns ${where}`).all(...params);
+  const totalInRange = rows.length;
+  const categorised = rows.filter((r) => r.fault_category);
+
+  // Totals per fault category (only returns where staff have recorded one
+  // as part of Warranty Determination - older/in-progress returns won't
+  // have this yet), most common first.
+  const categoryTotals = {};
+  FAULT_CATEGORIES.forEach((c) => { categoryTotals[c] = 0; });
+  categorised.forEach((r) => {
+    categoryTotals[r.fault_category] = (categoryTotals[r.fault_category] || 0) + 1;
+  });
+  const categoryTotalsSorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+  const maxCategoryCount = Math.max(1, ...categoryTotalsSorted.map(([, n]) => n));
+
+  // Matrix of Equipment Type x Fault Category, so a trend on a particular
+  // type of kit stands out. Equipment Type is free text on the submission
+  // form, so this groups by the trimmed value exactly as typed - returns
+  // where it was entered inconsistently will appear as separate rows.
+  const matrix = {};
+  categorised.forEach((r) => {
+    const key = (r.equipment_type || '').trim() || 'Unspecified';
+    if (!matrix[key]) matrix[key] = {};
+    matrix[key][r.fault_category] = (matrix[key][r.fault_category] || 0) + 1;
+  });
+  const equipmentTypes = Object.keys(matrix).sort((a, b) => {
+    const totalA = Object.values(matrix[a]).reduce((s, n) => s + n, 0);
+    const totalB = Object.values(matrix[b]).reduce((s, n) => s + n, 0);
+    return totalB - totalA;
+  });
+
+  res.render('reports', {
+    user: req.session.user,
+    from: from || '', to: to || '',
+    totalInRange, categorisedCount: categorised.length,
+    categoryTotalsSorted, maxCategoryCount,
+    FAULT_CATEGORIES, equipmentTypes, matrix
+  });
+});
+
+// --- CSV export of returns (opens straight in Excel), filtered by status  ---
+// --- (open/closed/all) and the same optional date range as the Reports    ---
+// --- page above.                                                          ---
+router.get('/reports/export', (req, res) => {
+  const { status, from, to } = req.query;
+
+  const clauses = [];
+  const params = [];
+  if (status === 'open') { clauses.push('status != ?'); params.push(CLOSED_STATUS); }
+  if (status === 'closed') { clauses.push('status = ?'); params.push(CLOSED_STATUS); }
+  if (from) { clauses.push('date(created_at) >= date(?)'); params.push(from); }
+  if (to) { clauses.push('date(created_at) <= date(?)'); params.push(to); }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const rows = db.prepare(`SELECT * FROM returns ${where} ORDER BY created_at ASC`).all(...params);
+
+  const columns = [
+    ['Reference', (r) => r.reference],
+    ['Status', (r) => r.status],
+    ['Company', (r) => r.company_name],
+    ['Contact Name', (r) => r.contact_name],
+    ['Phone', (r) => r.phone],
+    ['Email', (r) => r.email],
+    ['Equipment Type', (r) => r.equipment_type],
+    ['Make', (r) => r.make],
+    ['Model', (r) => r.model],
+    ['Serial Number', (r) => r.serial_number],
+    ['Fault Description', (r) => r.fault_description],
+    ['Fault Category', (r) => r.fault_category],
+    ['Manufacturer RMA Number', (r) => r.manufacturer_rma_number],
+    ['RTA RT Number', (r) => r.rta_rt_number],
+    ['Created', (r) => r.created_at],
+    ['Last Updated', (r) => r.updated_at]
+  ];
+
+  const csvEscape = (value) => {
+    const str = value === null || value === undefined ? '' : String(value);
+    if (/[",\n]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const lines = [columns.map(([label]) => csvEscape(label)).join(',')];
+  rows.forEach((r) => {
+    lines.push(columns.map(([, fn]) => csvEscape(fn(r))).join(','));
+  });
+  const csv = lines.join('\r\n');
+
+  const labelPart = status === 'open' ? 'open' : status === 'closed' ? 'closed' : 'all';
+  const timestamp = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="returns-${labelPart}-${timestamp}.csv"`);
+  res.send('\uFEFF' + csv); // BOM so Excel opens the UTF-8 file with correct characters
+});
+
 // --- Admin: manage staff users ---
 function usersPageData() {
-  const users = db.prepare('SELECT id, username, name, role, email, notify_on_submitted, notify_on_completed, created_at FROM users ORDER BY created_at ASC').all();
+  const users = db.prepare('SELECT id, username, name, role, email, notify_on_submitted, notify_on_completed, notify_on_backup, created_at FROM users ORDER BY created_at ASC').all();
   const invites = db.prepare(`
     SELECT * FROM invites WHERE accepted_at IS NULL ORDER BY created_at DESC
   `).all().map((inv) => ({ ...inv, expired: new Date(inv.expires_at) < new Date() }));
@@ -575,7 +683,8 @@ router.post('/users/:id/edit', requireAdmin, (req, res) => {
 });
 
 // --- Admin: which staff get emailed automatically on a new submission,   ---
-// --- and which get emailed when a return is marked "Return Closed". A   ---
+// --- which get emailed when a return is marked "Return Closed", and      ---
+// --- which get the automatic daily backup (see utils/autoBackup.js). A   ---
 // --- checkbox that isn't ticked simply doesn't appear in req.body, so    ---
 // --- every user is set explicitly (on if present in the array, off if   ---
 // --- not) rather than only ever turning things on.                      ---
@@ -584,13 +693,16 @@ router.post('/users/notifications', requireAdmin, (req, res) => {
   if (!Array.isArray(submittedIds)) submittedIds = [submittedIds];
   let completedIds = req.body.notify_completed || [];
   if (!Array.isArray(completedIds)) completedIds = [completedIds];
+  let backupIds = req.body.notify_backup || [];
+  if (!Array.isArray(backupIds)) backupIds = [backupIds];
 
   const allUsers = db.prepare('SELECT id FROM users').all();
-  const updateStmt = db.prepare('UPDATE users SET notify_on_submitted = ?, notify_on_completed = ? WHERE id = ?');
+  const updateStmt = db.prepare('UPDATE users SET notify_on_submitted = ?, notify_on_completed = ?, notify_on_backup = ? WHERE id = ?');
   allUsers.forEach((u) => {
     const notifySubmitted = submittedIds.includes(String(u.id)) ? 1 : 0;
     const notifyCompleted = completedIds.includes(String(u.id)) ? 1 : 0;
-    updateStmt.run(notifySubmitted, notifyCompleted, u.id);
+    const notifyBackup = backupIds.includes(String(u.id)) ? 1 : 0;
+    updateStmt.run(notifySubmitted, notifyCompleted, notifyBackup, u.id);
   });
 
   res.redirect('/users');
