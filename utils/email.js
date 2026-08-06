@@ -172,6 +172,7 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = [], recipi
       <strong>Final status:</strong> ${escapeHtml(returnRecord.insp_warranty_verdict)}<br/>
       <strong>Reason for rejection:</strong> ${escapeHtml(returnRecord.insp_rejection_reason)}<br/>
       <strong>Action taken:</strong> ${escapeHtml(returnRecord.insp_action_taken)}<br/>
+      <strong>Fault category:</strong> ${escapeHtml(returnRecord.fault_category)}<br/>
       <strong>Technician summary:</strong> ${escapeHtml(returnRecord.insp_warranty_summary)}
     </p>
 
@@ -223,6 +224,34 @@ async function sendStaffInviteEmail({ email, name, invitedBy, acceptUrl }) {
   return sendMail({ to: email, subject, html });
 }
 
+// Sent automatically once a day (see utils/autoBackup.js) to whichever staff
+// have ticked "Daily Backup" in the admin Email Notifications area - the
+// same zip as the manual "Download Backup" button, just delivered
+// automatically so there's always an off-site copy without anyone needing
+// to remember to click the button.
+async function sendDailyBackupEmail(recipients, zipBuffer, dateStr) {
+  if (!recipients || !recipients.length) return { skipped: true };
+
+  const subject = `Daily Backup - RT Automation Returns Portal - ${dateStr}`;
+  const html = `
+    <p>Attached is the automatic daily backup of the Returns Portal, generated ${escapeHtml(dateStr)}.</p>
+    <p>It contains every return, its status history, uploaded photos/videos/documents, and staff accounts
+    (no passwords) as of this morning.</p>
+  `;
+  return sendMail({
+    to: recipients.join(', '),
+    subject,
+    html,
+    attachments: [
+      {
+        filename: `returns-portal-backup-${dateStr}.zip`,
+        content: zipBuffer,
+        contentType: 'application/zip'
+      }
+    ]
+  });
+}
+
 function escapeHtml(str = '') {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -231,4 +260,4 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail };
+module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail, sendDailyBackupEmail };
