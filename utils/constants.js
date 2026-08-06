@@ -87,6 +87,14 @@ const REJECTION_REASONS = [
 ];
 const ACTION_TAKEN_OPTIONS = ['Replaced under warranty', 'Repaired', 'Scrapped', 'Returned to customer as-is'];
 
+// Root cause of the fault, picked by staff as part of the Warranty
+// Determination step - used by the Reports page to spot trends by
+// equipment type (see routes/returns.js's /reports route).
+const FAULT_CATEGORIES = [
+  'User Error', 'Manufacturing Defect', 'Misuse', 'Installation Error',
+  'No Fault Found', 'Transit Damage', 'Wear and Tear'
+];
+
 // Access Control Ltd / RT Automation's own details, as they appear on the
 // Roger Technology "Request for Authorisation to Return Product for
 // Inspection" form's Dealer Details section. These are always the same for
@@ -103,5 +111,5 @@ module.exports = {
   APPLICATION_TYPES, PRODUCT_TYPES,
   TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES
 };
