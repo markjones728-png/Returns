@@ -4,12 +4,13 @@
 <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
 
 <table class="table">
-  <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Created</th><th></th></tr></thead>
   <tbody>
     <% users.forEach(u => { %>
       <tr>
         <td><%= u.name %></td>
         <td><%= u.username %></td>
+        <td><%= u.email || '—' %></td>
         <td><%= u.role %></td>
         <td><%= new Date(u.created_at).toLocaleDateString('en-GB') %></td>
         <td class="table-actions">
@@ -24,6 +25,34 @@
     <% }) %>
   </tbody>
 </table>
+
+<div class="card">
+  <h2>Email Notifications</h2>
+  <p class="muted">
+    Choose who gets emailed automatically when a new return is submitted, and when a return is
+    marked "Return Closed". Only staff with an email address set (use Edit above to add one) will
+    actually receive these, even if ticked below.
+  </p>
+  <form action="/users/notifications" method="POST">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th>New Submissions</th><th>Completed Returns</th></tr></thead>
+      <tbody>
+        <% users.forEach(u => { %>
+          <tr>
+            <td><%= u.name %></td>
+            <td>
+              <%= u.email || '—' %>
+              <% if (!u.email) { %><span class="muted">(no email set)</span><% } %>
+            </td>
+            <td><input type="checkbox" name="notify_submitted" value="<%= u.id %>" <%= u.notify_on_submitted ? 'checked' : '' %> /></td>
+            <td><input type="checkbox" name="notify_completed" value="<%= u.id %>" <%= u.notify_on_completed ? 'checked' : '' %> /></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <button type="submit" class="btn btn-primary" style="margin-top:16px;">Save Notification Settings</button>
+  </form>
+</div>
 
 <% if (invites.length) { %>
   <h2 class="section-heading">Pending Invites</h2>
@@ -71,6 +100,7 @@
   <form action="/users" method="POST" class="form-grid">
     <label>Full Name <input type="text" name="name" required /></label>
     <label>Username <input type="text" name="username" required /></label>
+    <label>Email Address <input type="email" name="email" placeholder="Needed to receive notification emails" /></label>
     <label>Password <input type="password" name="password" required /></label>
     <label>Role
       <select name="role">
