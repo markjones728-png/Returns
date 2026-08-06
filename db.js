@@ -156,6 +156,14 @@ ensureColumn('returns', 'insp_warranty_summary', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'warranty_completed_by', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'warranty_completed_at', "TEXT");
 
+// --- Staff email address + per-event notification opt-ins, set from the   ---
+// --- Email Notifications area on the admin Users page. A staff member     ---
+// --- only actually receives an email once both their email is set AND     ---
+// --- the relevant checkbox is on - see utils/notifications.js.            ---
+ensureColumn('users', 'email', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('users', 'notify_on_submitted', "INTEGER NOT NULL DEFAULT 0");
+ensureColumn('users', 'notify_on_completed', "INTEGER NOT NULL DEFAULT 0");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
