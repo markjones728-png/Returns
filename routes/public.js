@@ -5,8 +5,13 @@ const { db, nextReference } = require('../db');
 const { APPLICATION_TYPES, PRODUCT_TYPES } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
-const { sendReturnSubmittedEmail } = require('../utils/email');
+const { sendReturnSubmittedEmail, sendNewReturnStaffAlert } = require('../utils/email');
+const { getNotifyRecipients } = require('../utils/notifications');
 const { generateCustomerReturnPdf } = require('../utils/pdf');
+
+function baseUrl(req) {
+  return `${req.protocol}://${req.get('host')}`;
+}
 
 router.get('/', (req, res) => {
   res.render('home');
@@ -68,6 +73,13 @@ router.post('/submit', (req, res, next) => {
   }
 
   await sendReturnSubmittedEmail(returnRow);
+
+  // Also alert whichever staff have opted in to "New Submissions" in the
+  // admin Email Notifications area, if any.
+  const submitRecipients = getNotifyRecipients('notify_on_submitted');
+  if (submitRecipients.length) {
+    await sendNewReturnStaffAlert(returnRow, submitRecipients, `${baseUrl(req)}/returns/${returnRow.id}`);
+  }
 
   res.render('submit-success', { reference });
 });
