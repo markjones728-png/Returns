@@ -9,6 +9,7 @@ const publicRoutes = require('./routes/public');
 const { router: authRoutes } = require('./routes/auth');
 const returnsRoutes = require('./routes/returns');
 const inviteRoutes = require('./routes/invite');
+const { maybeSendDailyBackup } = require('./utils/autoBackup');
 
 const app = express();
 
@@ -36,6 +37,13 @@ app.use(session({
 
 app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
+  next();
+});
+
+// See utils/autoBackup.js - cheap to check on every request, only actually
+// does anything once a day. Not awaited, so it never delays a page loading.
+app.use((req, res, next) => {
+  maybeSendDailyBackup().catch((err) => console.error('Daily backup check failed:', err.message));
   next();
 });
 
