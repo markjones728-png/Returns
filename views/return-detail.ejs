@@ -2,16 +2,45 @@
 
 <div class="detail-head">
   <h1><%= r.reference %></h1>
-  <span class="status-pill big" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span>
+  <span class="status-pill big" id="statusPill" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span>
   <a class="btn btn-secondary" href="/returns/<%= r.id %>/pdf">Download PDF Report</a>
   <form action="/returns/<%= r.id %>/send-report" method="POST" class="inline-form">
     <button type="submit" class="btn btn-secondary">Email Report to Customer</button>
   </form>
-  <% if (r.status !== closedStatus) { %>
+  <span id="archiveButtonWrap" style="<%= r.status === closedStatus ? 'display:none;' : '' %>">
     <form action="/returns/<%= r.id %>/archive" method="POST" class="inline-form">
       <button type="submit" class="btn btn-secondary">Archive This Return</button>
     </form>
-  <% } %>
+  </span>
+</div>
+
+<div class="card" id="messages">
+  <h2>Messages<% if (messages.length) { %> <span class="muted">(<%= messages.length %>)</span><% } %></h2>
+  <p class="muted">
+    Message the customer directly about this return - they'll see it, and can reply, on their
+    Track a Return page. They're always emailed when you send one here, since they don't have a
+    login to check otherwise.
+  </p>
+  <div class="message-thread">
+    <% if (messages.length === 0) { %>
+      <p class="muted">No messages yet.</p>
+    <% } %>
+    <% messages.forEach(m => { %>
+      <div class="message-bubble message-<%= m.sender_type %>">
+        <div class="message-meta">
+          <strong><%= m.sender_name %></strong><% if (m.sender_type === 'customer') { %> <span class="muted">(customer)</span><% } %>
+          &middot; <%= new Date(m.created_at).toLocaleString('en-GB') %>
+        </div>
+        <div class="message-body"><%= m.body %></div>
+      </div>
+    <% }) %>
+  </div>
+  <form action="/returns/<%= r.id %>/messages" method="POST" class="form-grid" style="margin-top:16px;">
+    <label class="full">Send a message to the customer
+      <textarea name="body" rows="3" required placeholder="Type your message..."></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary full">Send Message</button>
+  </form>
 </div>
 
 <% if (user.role === 'admin') { %>
@@ -20,9 +49,10 @@
   <p class="muted">
     Corrects the details the customer originally typed in when they booked this return in (or that
     staff entered on their behalf). Changing the email address also changes what the customer needs
-    to use on the Track a Return page and where their emails are sent.
+    to use on the Track a Return page and where their emails are sent. Changes here save
+    automatically as you edit each field.
   </p>
-  <form action="/returns/<%= r.id %>/customer-details" method="POST" class="form-grid">
+  <form action="/returns/<%= r.id %>/customer-details" method="POST" class="form-grid autosave-form">
     <h2 class="full section-heading">Your Details</h2>
     <label>Company Name *
       <input type="text" name="company_name" value="<%= r.company_name %>" required />
@@ -162,7 +192,8 @@
   <h2>Item Received Condition</h2>
   <p class="muted">
     Record the condition of the item as received, before inspection. This information is for
-    internal/staff use only - it is never included in anything emailed to the customer.
+    internal/staff use only - it is never included in anything emailed to the customer. Everything
+    below except the file upload saves automatically as you fill it in.
   </p>
   <div class="media-grid">
     <% files.filter(f => f.kind === 'received_photo' || f.kind === 'received_video' || f.kind === 'received_document').forEach(f => { %>
@@ -180,7 +211,7 @@
           </a>
         <% } %>
         <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
-        <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form">
+        <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form autosave-form">
           <input type="hidden" name="redirect_anchor" value="received" />
           <input type="text" name="caption" value="<%= f.caption %>" placeholder="Add a note about this photo..." />
           <button type="submit" class="btn-tiny">Save</button>
@@ -191,7 +222,7 @@
       <p class="muted">No received-condition photos, videos or documents uploaded yet.</p>
     <% } %>
   </div>
-  <form action="/returns/<%= r.id %>/received" method="POST" enctype="multipart/form-data" class="form-grid">
+  <form action="/returns/<%= r.id %>/received" method="POST" enctype="multipart/form-data" class="form-grid autosave-form">
     <label class="full">Upload photos, videos or PDF documents of the item as received
       <input type="file" name="files" multiple accept="image/*,video/*,application/pdf" />
     </label>
@@ -219,9 +250,7 @@
     </label>
     <button type="submit" class="btn btn-primary full">Save Received Condition</button>
   </form>
-  <% if (r.received_completed_by) { %>
-    <p class="muted">Last saved by <%= r.received_completed_by %> on <%= new Date(r.received_completed_at).toLocaleString('en-GB') %></p>
-  <% } %>
+  <p class="muted autosave-lastsaved"><% if (r.received_completed_by) { %>Last saved by <%= r.received_completed_by %> on <%= new Date(r.received_completed_at).toLocaleString('en-GB') %><% } %></p>
 </div>
 
 <div class="card" id="inspection">
@@ -230,8 +259,9 @@
     Matches Roger Technology's own "Warranty Repair Return Form". The customer/company details,
     product/serial number, and fault description are already captured above and don't need
     repeating here - this only covers what that form asks for that isn't captured elsewhere.
+    Saves automatically as you fill it in.
   </p>
-  <form action="/returns/<%= r.id %>/inspection" method="POST" class="form-grid">
+  <form action="/returns/<%= r.id %>/inspection" method="POST" class="form-grid autosave-form">
     <h2 class="full section-heading">Product Information</h2>
     <label>Original Invoice / Order Number
       <input type="text" name="insp_invoice_number" value="<%= r.insp_invoice_number %>" />
@@ -265,15 +295,13 @@
 
     <button type="submit" class="btn btn-primary full">Save Inspection Details</button>
   </form>
-  <% if (r.insp_completed_by) { %>
-    <p class="muted">Last saved by <%= r.insp_completed_by %> on <%= new Date(r.insp_completed_at).toLocaleString('en-GB') %></p>
-  <% } %>
+  <p class="muted autosave-lastsaved"><% if (r.insp_completed_by) { %>Last saved by <%= r.insp_completed_by %> on <%= new Date(r.insp_completed_at).toLocaleString('en-GB') %><% } %></p>
 </div>
 
 <div class="card" id="testing">
   <h2>Testing</h2>
-  <p class="muted">Fill this in once the unit has been tested on the bench.</p>
-  <form action="/returns/<%= r.id %>/test" method="POST" class="form-grid">
+  <p class="muted">Fill this in once the unit has been tested on the bench. Saves automatically.</p>
+  <form action="/returns/<%= r.id %>/test" method="POST" class="form-grid autosave-form">
     <label>Test Result
       <select name="test_result">
         <option value="">-- Select --</option>
@@ -287,9 +315,7 @@
     </label>
     <button type="submit" class="btn btn-primary full">Save Test Results</button>
   </form>
-  <% if (r.test_completed_by) { %>
-    <p class="muted">Last saved by <%= r.test_completed_by %> on <%= new Date(r.test_completed_at).toLocaleString('en-GB') %></p>
-  <% } %>
+  <p class="muted autosave-lastsaved"><% if (r.test_completed_by) { %>Last saved by <%= r.test_completed_by %> on <%= new Date(r.test_completed_at).toLocaleString('en-GB') %><% } %></p>
 </div>
 
 <div class="card" id="warranty">
@@ -298,9 +324,9 @@
     Internal/staff use only - fill this in once testing is complete to record the final warranty
     decision. This is never included on anything emailed or shown to the customer. Fault Category
     feeds into the Reports page, so it's worth taking a moment to pick the option that best matches
-    the root cause - that's what lets trends by equipment type show up there.
+    the root cause - that's what lets trends by equipment type show up there. Saves automatically.
   </p>
-  <form action="/returns/<%= r.id %>/warranty" method="POST" class="form-grid">
+  <form action="/returns/<%= r.id %>/warranty" method="POST" class="form-grid autosave-form">
     <label>Final Status
       <select name="insp_warranty_verdict" id="warrantyVerdictSelect">
         <option value="">-- Select --</option>
@@ -338,9 +364,7 @@
     </label>
     <button type="submit" class="btn btn-primary full">Save Warranty Determination</button>
   </form>
-  <% if (r.warranty_completed_by) { %>
-    <p class="muted">Last saved by <%= r.warranty_completed_by %> on <%= new Date(r.warranty_completed_at).toLocaleString('en-GB') %></p>
-  <% } %>
+  <p class="muted autosave-lastsaved"><% if (r.warranty_completed_by) { %>Last saved by <%= r.warranty_completed_by %> on <%= new Date(r.warranty_completed_at).toLocaleString('en-GB') %><% } %></p>
 </div>
 
 <script>
@@ -357,7 +381,12 @@
 
 <div class="card">
   <h2>Update Status</h2>
-  <form action="/returns/<%= r.id %>/status" method="POST" class="form-grid">
+  <p class="muted">
+    This saves automatically the instant you pick a new status - no need to click the button
+    unless you'd like to. Untick the box below <em>before</em> changing the status if you don't
+    want the customer emailed about this particular change.
+  </p>
+  <form action="/returns/<%= r.id %>/status" method="POST" class="form-grid autosave-form" data-autosave-handler="statusForm">
     <label>New Status
       <select name="status" id="statusSelect" required>
         <% STATUSES.forEach(s => { %>
@@ -371,10 +400,14 @@
     <label class="full" id="rtaNumberField" style="display:none;">RTA RT Number
       <input type="text" name="rta_rt_number" id="rtaNumberInput" value="<%= r.rta_rt_number %>" placeholder="e.g. RT-12345" />
     </label>
-    <label class="full">Note (optional)
-      <input type="text" name="note" placeholder="e.g. Collected by XYZ Couriers, tracking 12345" />
+    <label class="full">Note for this change (optional)
+      <input type="text" name="note" id="statusNoteInput" value="<%= r.pending_status_note %>" placeholder="e.g. Collected by XYZ Couriers, tracking 12345" />
     </label>
-    <p class="muted full">The customer will automatically be emailed whenever you change the status.</p>
+    <label class="checkbox-label full">
+      <input type="checkbox" name="notify_customer" id="notifyCustomerCheckbox" checked />
+      Email the customer about this change
+    </label>
+    <p class="muted full" id="statusEmailFlash" style="display:none;"></p>
     <button type="submit" class="btn btn-primary full">Update Status</button>
   </form>
 </div>
@@ -392,12 +425,37 @@
     }
     select.addEventListener('change', updateFields);
     updateFields();
+
+    window.autosaveHandlers = window.autosaveHandlers || {};
+    window.autosaveHandlers.statusForm = function (form, data) {
+      var flash = document.getElementById('statusEmailFlash');
+      if (data.statusChanged) {
+        var pill = document.getElementById('statusPill');
+        if (pill) { pill.textContent = data.status; pill.style.background = data.statusColor; }
+        var archiveWrap = document.getElementById('archiveButtonWrap');
+        if (archiveWrap) archiveWrap.style.display = data.isClosed ? 'none' : '';
+        var historyList = document.getElementById('historyList');
+        if (historyList && data.historyItemHtml) {
+          historyList.insertAdjacentHTML('afterbegin', data.historyItemHtml);
+        }
+        var noteField = document.getElementById('statusNoteInput');
+        if (noteField) noteField.value = '';
+        if (flash) {
+          flash.textContent = data.emailed
+            ? 'Customer has been emailed about this change.'
+            : 'Status changed - the customer was NOT emailed (box was unticked).';
+          flash.style.display = '';
+        }
+      } else if (flash) {
+        flash.style.display = 'none';
+      }
+    };
   })();
 </script>
 
 <div class="card">
   <h2>Staff Notes</h2>
-  <form action="/returns/<%= r.id %>/notes" method="POST" class="form-grid">
+  <form action="/returns/<%= r.id %>/notes" method="POST" class="form-grid autosave-form">
     <textarea name="staff_notes" rows="4" class="full"><%= r.staff_notes %></textarea>
     <button type="submit" class="btn btn-secondary full">Save Notes</button>
   </form>
@@ -422,7 +480,7 @@
           </a>
         <% } %>
         <div class="media-caption"><%= f.original_name %> <span class="muted">(<%= f.uploaded_by %>)</span></div>
-        <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form">
+        <form action="/returns/<%= r.id %>/files/<%= f.id %>/caption" method="POST" class="caption-form autosave-form">
           <input type="hidden" name="redirect_anchor" value="photos" />
           <input type="text" name="caption" value="<%= f.caption %>" placeholder="Add a note about this photo..." />
           <button type="submit" class="btn-tiny">Save</button>
@@ -441,9 +499,9 @@
 
 <div class="card">
   <h2>Status History</h2>
-  <ul class="timeline">
+  <ul class="timeline" id="historyList">
     <% history.forEach(h => { %>
-      <li><strong><%= h.status %></strong> &mdash; <%= new Date(h.changed_at).toLocaleString('en-GB') %> by <%= h.changed_by %><% if (h.note) { %> <em>(<%= h.note %>)</em><% } %></li>
+      <%- include('partials/history-item', { h }) %>
     <% }) %>
   </ul>
 </div>
