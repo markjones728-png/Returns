@@ -51,6 +51,31 @@
       <% }) %>
       <% if (result.files.length === 0) { %><p class="muted">No photos, videos or documents yet.</p><% } %>
     </div>
+
+    <h3>Messages</h3>
+    <p class="muted">Ask a question about your return, or reply to a message from our returns team.</p>
+    <div class="message-thread">
+      <% if (result.messages.length === 0) { %>
+        <p class="muted">No messages yet.</p>
+      <% } %>
+      <% result.messages.forEach(m => { %>
+        <div class="message-bubble message-<%= m.sender_type %>">
+          <div class="message-meta">
+            <strong><%= m.sender_type === 'staff' ? 'Returns Team' : m.sender_name %></strong>
+            &middot; <%= new Date(m.created_at).toLocaleString('en-GB') %>
+          </div>
+          <div class="message-body"><%= m.body %></div>
+        </div>
+      <% }) %>
+    </div>
+    <form action="/track/message" method="POST" class="form-grid" style="margin-top:16px;">
+      <input type="hidden" name="reference" value="<%= result.returnRow.reference %>" />
+      <input type="hidden" name="email" value="<%= result.returnRow.email %>" />
+      <label class="full">Your message
+        <textarea name="body" rows="3" required placeholder="Type your message..."></textarea>
+      </label>
+      <button type="submit" class="btn btn-primary full">Send Message</button>
+    </form>
   </div>
 <% } %>
 
