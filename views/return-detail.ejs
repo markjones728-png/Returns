@@ -308,6 +308,9 @@
         <% TEST_RESULTS.forEach(o => { %>
           <option value="<%= o %>" <%= r.test_result === o ? 'selected' : '' %>><%= o %></option>
         <% }) %>
+        <% if (r.test_result && !TEST_RESULTS.includes(r.test_result)) { %>
+          <option value="<%= r.test_result %>" selected>(Previous option) <%= r.test_result %></option>
+        <% } %>
       </select>
     </label>
     <label class="full">Test Notes
