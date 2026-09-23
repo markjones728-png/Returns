@@ -55,11 +55,15 @@ const STATUS_COLORS = {
 // --- Options for the Roger Technology inspection/test form ---
 const APPLICATION_TYPES = ['Residential', 'Commercial', 'Industrial', 'Other'];
 const PRODUCT_TYPES = ['Sliding Gate', 'Swing Gate', 'Barrier', 'Bollard', 'Garage Door', 'Industrial Door', 'Other'];
-// 'Intermittent Fault Found' and 'Unable to Test' were added to match the
-// Roger Technology Warranty Repair Return Form's Bench Test Result options -
-// the original three are kept as-is so existing saved returns still show
-// their selection correctly.
-const TEST_RESULTS = ['Pass', 'Fail', 'Partial / Further Work Needed', 'Intermittent Fault Found', 'Unable to Test'];
+const TEST_RESULTS = [
+  'Repair required - Warranty',
+  'Repair required - Not warranty',
+  'Faulty - Unrepairable - Warrantied',
+  'Faulty - Unrepairable - Not Warrantied',
+  'No Fault Found',
+  'Referred to RT Italy',
+  'Unable to Test'
+];
 
 // Options for the "Received Condition" check done when the item first
 // arrives at the returns department - internal/staff use only, see below.
