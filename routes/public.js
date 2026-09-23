@@ -5,7 +5,7 @@ const { db, nextReference } = require('../db');
 const { APPLICATION_TYPES, PRODUCT_TYPES } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
-const { sendReturnSubmittedEmail, sendNewReturnStaffAlert } = require('../utils/email');
+const { sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendStaffMessageAlert } = require('../utils/email');
 const { getNotifyRecipients } = require('../utils/notifications');
 const { generateCustomerReturnPdf } = require('../utils/pdf');
 
@@ -121,7 +121,11 @@ router.get('/track', (req, res) => {
     `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video', 'document') ORDER BY uploaded_at ASC`
   ).all(returnRow.id);
 
-  res.render('track', { error: null, result: { returnRow, history, files }, prefill });
+  const messages = db.prepare(
+    'SELECT * FROM return_messages WHERE return_id = ? ORDER BY created_at ASC'
+  ).all(returnRow.id);
+
+  res.render('track', { error: null, result: { returnRow, history, files, messages }, prefill });
 });
 
 router.post('/track', (req, res) => {
@@ -145,7 +149,41 @@ router.post('/track', (req, res) => {
     `SELECT * FROM return_files WHERE return_id = ? AND kind IN ('photo', 'video', 'document') ORDER BY uploaded_at ASC`
   ).all(returnRow.id);
 
-  res.render('track', { error: null, result: { returnRow, history, files }, prefill });
+  const messages = db.prepare(
+    'SELECT * FROM return_messages WHERE return_id = ? ORDER BY created_at ASC'
+  ).all(returnRow.id);
+
+  res.render('track', { error: null, result: { returnRow, history, files, messages }, prefill });
+});
+
+// Public: customer replies on their Track a Return page. No login - the
+// same reference+email pair used to look up the return also authorises
+// posting a message against it. Alerts whichever staff have ticked "New
+// Messages" in the admin Email Notifications area, then reloads the same
+// tracking page (via the reference+email query string) so the customer
+// sees their message appear in the thread straight away.
+router.post('/track/message', async (req, res) => {
+  const { reference, email, body } = req.body;
+  const returnRow = db.prepare(
+    'SELECT * FROM returns WHERE reference = ? AND email = ?'
+  ).get((reference || '').trim(), (email || '').trim());
+
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const text = (body || '').trim();
+  if (text) {
+    db.prepare(`
+      INSERT INTO return_messages (return_id, sender_type, sender_name, body)
+      VALUES (?, 'customer', ?, ?)
+    `).run(returnRow.id, returnRow.contact_name, text);
+
+    const recipients = getNotifyRecipients('notify_on_message');
+    if (recipients.length) {
+      await sendStaffMessageAlert(returnRow, text, recipients, `${baseUrl(req)}/returns/${returnRow.id}#messages`);
+    }
+  }
+
+  res.redirect(`/track?reference=${encodeURIComponent(returnRow.reference)}&email=${encodeURIComponent(returnRow.email)}`);
 });
 
 // Public: same reference+email check as the lookup above, then stream the
