@@ -13,13 +13,21 @@ const {
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
-const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail } = require('../utils/email');
+const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail, sendCustomerMessageEmail } = require('../utils/email');
 const { getNotifyRecipients } = require('../utils/notifications');
 const { generateReturnPdf, generateReturnPdfBuffer } = require('../utils/pdf');
 const { streamBackupZip } = require('../utils/backup');
 const { requireAuth, requireAdmin } = require('./auth');
 
 router.use(requireAuth);
+
+// The auto-save JS (public/js/autosave.js) marks every request it makes with
+// this header, so these routes can tell an automatic save apart from a
+// normal full-page form submission (e.g. if JavaScript is unavailable) and
+// respond with a small JSON result instead of redirecting the whole page.
+function isAutosave(req) {
+  return req.get('X-Autosave') === '1';
+}
 
 router.get('/dashboard', (req, res) => {
   const q = (req.query.q || '').trim();
@@ -37,12 +45,22 @@ router.get('/dashboard', (req, res) => {
     rows = db.prepare('SELECT * FROM returns ORDER BY created_at DESC').all();
   }
 
+  // Unread-message counts (customer replies not yet opened by staff), keyed
+  // by return id, so the Dashboard can show a small "new message" badge
+  // without staff needing to open every return to check.
+  const unreadRows = db.prepare(`
+    SELECT return_id, COUNT(*) AS c FROM return_messages WHERE read_by_staff = 0 GROUP BY return_id
+  `).all();
+  const unreadCounts = {};
+  unreadRows.forEach((u) => { unreadCounts[u.return_id] = u.c; });
+
   const live = rows.filter((r) => r.status !== CLOSED_STATUS);
   const archived = rows.filter((r) => r.status === CLOSED_STATUS);
 
   res.render('dashboard', {
     live, archived, tab, q,
     statusColors: STATUS_COLORS,
+    unreadCounts,
     user: req.session.user
   });
 });
@@ -120,8 +138,13 @@ router.get('/returns/:id', (req, res) => {
   const files = db.prepare('SELECT * FROM return_files WHERE return_id = ? ORDER BY uploaded_at ASC').all(returnRow.id);
   const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at DESC').all(returnRow.id);
 
+  // Opening the return marks any customer messages as read, clearing the
+  // "new message" badge on the Dashboard.
+  db.prepare('UPDATE return_messages SET read_by_staff = 1 WHERE return_id = ? AND read_by_staff = 0').run(returnRow.id);
+  const messages = db.prepare('SELECT * FROM return_messages WHERE return_id = ? ORDER BY created_at ASC').all(returnRow.id);
+
   res.render('return-detail', {
-    r: returnRow, files, history, STATUSES, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
+    r: returnRow, files, history, messages, STATUSES, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
     statusColors: STATUS_COLORS,
     closedStatus: CLOSED_STATUS,
     APPLICATION_TYPES, PRODUCT_TYPES,
@@ -130,6 +153,27 @@ router.get('/returns/:id', (req, res) => {
     WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
     user: req.session.user
   });
+});
+
+// --- Staff: send a chat message to the customer about this return. Always ---
+// --- emails the customer (they have no login), and marks itself as        ---
+// --- already-read since it's staff's own message.                        ---
+router.post('/returns/:id/messages', async (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const text = (req.body.body || '').trim();
+  if (text) {
+    db.prepare(`
+      INSERT INTO return_messages (return_id, sender_type, sender_name, body, read_by_staff)
+      VALUES (?, 'staff', ?, ?, 1)
+    `).run(returnRow.id, req.session.user.name, text);
+
+    const trackUrl = `${baseUrl(req)}/track?reference=${encodeURIComponent(returnRow.reference)}&email=${encodeURIComponent(returnRow.email)}`;
+    await sendCustomerMessageEmail(returnRow, text, trackUrl);
+  }
+
+  res.redirect(`/returns/${returnRow.id}#messages`);
 });
 
 // --- Staff: Roger Technology inspection form (filled in on receipt) ---
@@ -156,6 +200,9 @@ router.post('/returns/:id/inspection', (req, res) => {
     returnRow.id
   );
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
   res.redirect(`/returns/${returnRow.id}#inspection`);
 });
 
@@ -196,6 +243,9 @@ router.post('/returns/:id/received', (req, res, next) => {
     saved.forEach((f) => stmt.run(returnRow.id, f.filename, f.original_name, f.mime_type, f.kind, req.session.user.name));
   }
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString(), filesUploaded: (req.files || []).length });
+  }
   res.redirect(`/returns/${returnRow.id}#received`);
 });
 
@@ -214,6 +264,9 @@ router.post('/returns/:id/test', (req, res) => {
     WHERE id = ?
   `).run(test_result || '', test_notes || '', req.session.user.name, returnRow.id);
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
   res.redirect(`/returns/${returnRow.id}#testing`);
 });
 
@@ -238,6 +291,9 @@ router.post('/returns/:id/warranty', (req, res) => {
     returnRow.id
   );
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
   res.redirect(`/returns/${returnRow.id}#warranty`);
 });
 
@@ -258,7 +314,9 @@ router.post('/returns/:id/customer-details', requireAdmin, (req, res) => {
   } = req.body;
 
   if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
-    return res.status(400).send('Please fill in all required fields, then go back and try again.');
+    const msg = 'Please fill in all required fields, then go back and try again.';
+    if (isAutosave(req)) return res.status(400).json({ ok: false, error: msg });
+    return res.status(400).send(msg);
   }
 
   db.prepare(`
@@ -277,6 +335,9 @@ router.post('/returns/:id/customer-details', requireAdmin, (req, res) => {
     returnRow.id
   );
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
   res.redirect(`/returns/${returnRow.id}`);
 });
 
@@ -305,13 +366,17 @@ router.post('/returns/:id/status', async (req, res) => {
   const { status, note, manufacturer_rma_number, rta_rt_number } = req.body;
   if (!STATUSES.includes(status)) return res.status(400).send('Invalid status.');
 
-  const statusChanged = status !== returnRow.status;
+  // Only tick this on to email the customer - see the tick box on the
+  // Update Status form. Unticking it before a status change keeps that
+  // particular update purely internal.
+  const notifyCustomer = !!req.body.notify_customer;
 
-  db.prepare(`UPDATE returns SET status = ?, updated_at = datetime('now') WHERE id = ?`).run(status, returnRow.id);
-  db.prepare(`
-    INSERT INTO return_status_history (return_id, status, changed_by, note)
-    VALUES (?, ?, ?, ?)
-  `).run(returnRow.id, status, req.session.user.name, note || '');
+  const statusChanged = status !== returnRow.status;
+  const noteText = note || '';
+
+  // The Note box auto-saves as you type into `pending_status_note` (see
+  // db.js) so it's never lost, whether or not the status has changed yet.
+  db.prepare(`UPDATE returns SET pending_status_note = ? WHERE id = ?`).run(noteText, returnRow.id);
 
   // Only overwrite these numbers if something was actually entered this time,
   // so they aren't accidentally wiped out by a later, unrelated status change.
@@ -324,23 +389,65 @@ router.post('/returns/:id/status', async (req, res) => {
       .run(rta_rt_number.trim(), returnRow.id);
   }
 
+  let emailed = false;
+  let newHistoryRow = null;
+
+  if (statusChanged) {
+    db.prepare(`UPDATE returns SET status = ?, updated_at = datetime('now') WHERE id = ?`).run(status, returnRow.id);
+    const info = db.prepare(`
+      INSERT INTO return_status_history (return_id, status, changed_by, note)
+      VALUES (?, ?, ?, ?)
+    `).run(returnRow.id, status, req.session.user.name, noteText);
+    newHistoryRow = db.prepare('SELECT * FROM return_status_history WHERE id = ?').get(info.lastInsertRowid);
+
+    // The note has now been recorded against this status change, so clear
+    // it ready for whatever's typed ahead of the next one.
+    db.prepare(`UPDATE returns SET pending_status_note = '' WHERE id = ?`).run(returnRow.id);
+  }
+
   const updated = db.prepare('SELECT * FROM returns WHERE id = ?').get(returnRow.id);
 
-  // The customer is always emailed whenever the status actually changes, so
-  // they're kept up to date automatically without staff needing to remember.
-  // The link takes them straight to their report on the Track a Return page,
-  // with their reference/email already filled in.
-  if (statusChanged) {
+  // The customer is only emailed when the status actually changed AND the
+  // "notify customer" box was ticked at the time - see the tick box on the
+  // Update Status form. The link takes them straight to their report on the
+  // Track a Return page, with their reference/email already filled in.
+  if (statusChanged && notifyCustomer) {
     const trackUrl = `${baseUrl(req)}/track?reference=${encodeURIComponent(updated.reference)}&email=${encodeURIComponent(updated.email)}`;
     await sendStatusUpdateEmail(updated, trackUrl);
+    emailed = true;
   }
 
   // When a return reaches "Return Closed", send the full record to whichever
   // staff have opted in to "Completed Returns" in the admin Email
-  // Notifications area, so nothing is lost/forgotten.
-  if (status === CLOSED_STATUS) {
+  // Notifications area, so nothing is lost/forgotten. This internal alert
+  // isn't affected by the customer notify tick box above.
+  if (statusChanged && status === CLOSED_STATUS) {
     const history = db.prepare('SELECT * FROM return_status_history WHERE return_id = ? ORDER BY changed_at ASC').all(returnRow.id);
     await sendReturnCompletedEmail(updated, history, getNotifyRecipients('notify_on_completed'));
+  }
+
+  if (isAutosave(req)) {
+    const respond = (historyItemHtml) => res.json({
+      ok: true,
+      statusChanged,
+      status: updated.status,
+      statusColor: STATUS_COLORS[updated.status] || '#64748b',
+      isClosed: updated.status === CLOSED_STATUS,
+      emailed,
+      historyItemHtml: historyItemHtml || null,
+      manufacturerRmaNumber: updated.manufacturer_rma_number,
+      rtaRtNumber: updated.rta_rt_number,
+      savedBy: req.session.user.name,
+      savedAt: new Date().toISOString()
+    });
+
+    if (newHistoryRow) {
+      return req.app.render('partials/history-item', { h: newHistoryRow }, (err, html) => {
+        if (err) { console.error('Failed to render history item:', err.message); return respond(null); }
+        respond(html);
+      });
+    }
+    return respond(null);
   }
 
   res.redirect(`/returns/${returnRow.id}`);
@@ -371,6 +478,9 @@ router.post('/returns/:id/notes', (req, res) => {
   db.prepare(`UPDATE returns SET staff_notes = ?, updated_at = datetime('now') WHERE id = ?`)
     .run(req.body.staff_notes || '', returnRow.id);
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
   res.redirect(`/returns/${returnRow.id}`);
 });
 
@@ -407,6 +517,9 @@ router.post('/returns/:id/files/:fileId/caption', (req, res) => {
   db.prepare('UPDATE return_files SET caption = ? WHERE id = ?')
     .run((req.body.caption || '').trim(), file.id);
 
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedAt: new Date().toISOString() });
+  }
   const anchor = req.body.redirect_anchor ? `#${req.body.redirect_anchor}` : '';
   res.redirect(`/returns/${returnRow.id}${anchor}`);
 });
@@ -578,7 +691,7 @@ router.get('/reports/export', (req, res) => {
 
 // --- Admin: manage staff users ---
 function usersPageData() {
-  const users = db.prepare('SELECT id, username, name, role, email, notify_on_submitted, notify_on_completed, notify_on_backup, created_at FROM users ORDER BY created_at ASC').all();
+  const users = db.prepare('SELECT id, username, name, role, email, notify_on_submitted, notify_on_completed, notify_on_backup, notify_on_message, created_at FROM users ORDER BY created_at ASC').all();
   const invites = db.prepare(`
     SELECT * FROM invites WHERE accepted_at IS NULL ORDER BY created_at DESC
   `).all().map((inv) => ({ ...inv, expired: new Date(inv.expires_at) < new Date() }));
@@ -695,14 +808,17 @@ router.post('/users/notifications', requireAdmin, (req, res) => {
   if (!Array.isArray(completedIds)) completedIds = [completedIds];
   let backupIds = req.body.notify_backup || [];
   if (!Array.isArray(backupIds)) backupIds = [backupIds];
+  let messageIds = req.body.notify_message || [];
+  if (!Array.isArray(messageIds)) messageIds = [messageIds];
 
   const allUsers = db.prepare('SELECT id FROM users').all();
-  const updateStmt = db.prepare('UPDATE users SET notify_on_submitted = ?, notify_on_completed = ?, notify_on_backup = ? WHERE id = ?');
+  const updateStmt = db.prepare('UPDATE users SET notify_on_submitted = ?, notify_on_completed = ?, notify_on_backup = ?, notify_on_message = ? WHERE id = ?');
   allUsers.forEach((u) => {
     const notifySubmitted = submittedIds.includes(String(u.id)) ? 1 : 0;
     const notifyCompleted = completedIds.includes(String(u.id)) ? 1 : 0;
     const notifyBackup = backupIds.includes(String(u.id)) ? 1 : 0;
-    updateStmt.run(notifySubmitted, notifyCompleted, notifyBackup, u.id);
+    const notifyMessage = messageIds.includes(String(u.id)) ? 1 : 0;
+    updateStmt.run(notifySubmitted, notifyCompleted, notifyBackup, notifyMessage, u.id);
   });
 
   res.redirect('/users');
