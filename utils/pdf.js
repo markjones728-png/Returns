@@ -129,16 +129,21 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
 
   // Staff Notes are deliberately never included on this report.
 
-  // Status history
-  doc.moveDown(0.5);
-  doc.fontSize(13).fillColor('#0f172a').text('Status History');
-  doc.moveDown(0.3);
-  statusHistory.forEach((h) => {
-    doc
-      .fontSize(10)
-      .fillColor('#334155')
-      .text(`${new Date(h.changed_at).toLocaleString('en-GB')}  —  ${h.status}${h.note ? `  (${h.note})` : ''}  [${h.changed_by}]`);
-  });
+  // Status history - internal/staff copy only. The customer-facing copy
+  // deliberately leaves this out (they only need to know where things stand
+  // right now, shown above as "Current status" - not every intermediate
+  // status change or which staff member made it).
+  if (internal) {
+    doc.moveDown(0.5);
+    doc.fontSize(13).fillColor('#0f172a').text('Status History');
+    doc.moveDown(0.3);
+    statusHistory.forEach((h) => {
+      doc
+        .fontSize(10)
+        .fillColor('#334155')
+        .text(`${new Date(h.changed_at).toLocaleString('en-GB')}  —  ${h.status}${h.note ? `  (${h.note})` : ''}  [${h.changed_by}]`);
+    });
+  }
 
   doc.moveDown(1);
   doc
