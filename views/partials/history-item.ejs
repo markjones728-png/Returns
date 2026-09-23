@@ -1,0 +1,1 @@
+<li><strong><%= h.status %></strong> &mdash; <%= new Date(h.changed_at).toLocaleString('en-GB') %> by <%= h.changed_by %><% if (h.note) { %> <em>(<%= h.note %>)</em><% } %></li>
