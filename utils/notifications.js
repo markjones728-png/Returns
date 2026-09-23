@@ -4,7 +4,7 @@ const { db } = require('../db');
 // is the only thing ever interpolated into the SQL below, and it never
 // comes from user input, so there's no injection risk despite the
 // interpolation.
-const NOTIFY_COLUMNS = new Set(['notify_on_submitted', 'notify_on_completed', 'notify_on_backup']);
+const NOTIFY_COLUMNS = new Set(['notify_on_submitted', 'notify_on_completed', 'notify_on_backup', 'notify_on_message']);
 
 // Returns the email addresses of every staff member who has opted in to a
 // given notification type (see the Email Notifications area on the admin
