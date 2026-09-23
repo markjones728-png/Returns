@@ -1,0 +1,93 @@
+<%- include('partials/header', { title: 'Reports' }) %>
+
+<h1>Reports</h1>
+<p class="muted">Fault trends and downloadable exports of your returns data.</p>
+
+<div class="card">
+  <h2>Date Range</h2>
+  <form action="/reports" method="GET" class="form-grid">
+    <label>From
+      <input type="date" name="from" value="<%= from %>" />
+    </label>
+    <label>To
+      <input type="date" name="to" value="<%= to %>" />
+    </label>
+    <label></label>
+    <button type="submit" class="btn btn-primary full">Apply Filter</button>
+  </form>
+  <% if (from || to) { %>
+    <p class="muted" style="margin-top:10px;">
+      Showing <%= totalInRange %> return<%= totalInRange === 1 ? '' : 's' %> submitted
+      <% if (from) { %>from <%= from %><% } %>
+      <% if (to) { %>up to <%= to %><% } %>.
+      <a href="/reports">Clear filter</a>
+    </p>
+  <% } else { %>
+    <p class="muted" style="margin-top:10px;"><%= totalInRange %> return<%= totalInRange === 1 ? '' : 's' %> in total (all time).</p>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Fault Trends by Category</h2>
+  <p class="muted">
+    Based on <%= categorisedCount %> return<%= categorisedCount === 1 ? '' : 's' %> where a Fault Category has
+    been recorded as part of Warranty Determination. Returns still in progress, or closed before this field
+    existed, won't have one yet and aren't counted here.
+  </p>
+  <% if (categorisedCount === 0) { %>
+    <p class="muted">No returns with a Fault Category recorded yet in this range.</p>
+  <% } else { %>
+    <% categoryTotalsSorted.forEach(([cat, count]) => { %>
+      <div class="bar-row">
+        <div class="bar-label"><%= cat %></div>
+        <div class="bar-track"><div class="bar-fill" style="width: <%= Math.round((count / maxCategoryCount) * 100) %>%;"></div></div>
+        <div class="bar-count"><%= count %></div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Fault Trends by Equipment Type</h2>
+  <p class="muted">
+    Equipment Type is typed freely on the return form, so this groups returns by the exact text
+    entered - inconsistent spelling or capitalisation across returns will show up as separate rows.
+  </p>
+  <% if (equipmentTypes.length === 0) { %>
+    <p class="muted">No returns with a Fault Category recorded yet in this range.</p>
+  <% } else { %>
+    <div style="overflow-x:auto;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Equipment Type</th>
+          <% FAULT_CATEGORIES.forEach(cat => { %><th><%= cat %></th><% }) %>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% equipmentTypes.forEach(type => { %>
+          <% const rowTotal = FAULT_CATEGORIES.reduce((s, cat) => s + (matrix[type][cat] || 0), 0); %>
+          <tr>
+            <td><%= type %></td>
+            <% FAULT_CATEGORIES.forEach(cat => { %><td><%= matrix[type][cat] || '-' %></td><% }) %>
+            <td><strong><%= rowTotal %></strong></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    </div>
+  <% } %>
+</div>
+
+<div class="card">
+  <h2>Export Returns</h2>
+  <p class="muted">Downloads a spreadsheet (CSV, opens straight in Excel) using the date range above, if set.</p>
+  <div class="table-actions">
+    <a class="btn btn-secondary" href="/reports/export?status=open&from=<%= encodeURIComponent(from) %>&to=<%= encodeURIComponent(to) %>">Export Open Returns</a>
+    <a class="btn btn-secondary" href="/reports/export?status=closed&from=<%= encodeURIComponent(from) %>&to=<%= encodeURIComponent(to) %>">Export Closed Returns</a>
+    <a class="btn btn-secondary" href="/reports/export?status=all&from=<%= encodeURIComponent(from) %>&to=<%= encodeURIComponent(to) %>">Export All Returns</a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
