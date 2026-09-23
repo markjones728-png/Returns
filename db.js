@@ -85,6 +85,22 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  -- Messages exchanged between staff and the customer about a specific
+  -- return - see the "Messages" section on the return's page and on the
+  -- customer's Track a Return page. sender_type is either 'staff' or
+  -- 'customer'. read_by_staff is used to show a "new message" badge on the
+  -- Dashboard until a staff member opens the return.
+  CREATE TABLE IF NOT EXISTS return_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    return_id INTEGER NOT NULL,
+    sender_type TEXT NOT NULL,
+    sender_name TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    read_by_staff INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (return_id) REFERENCES returns(id)
+  );
 `);
 
 // --- Lightweight migrations: add any columns that don't exist yet on an  ---
@@ -189,6 +205,17 @@ ensureColumn('returns', 'fault_category', "TEXT NOT NULL DEFAULT ''");
 // (see utils/autoBackup.js) - a third opt-in alongside New Submissions and
 // Completed Returns in the admin Email Notifications area.
 ensureColumn('users', 'notify_on_backup', "INTEGER NOT NULL DEFAULT 0");
+
+// Whether this staff member is emailed when a customer sends a new chat
+// message about a return - a fourth opt-in alongside the three above.
+ensureColumn('users', 'notify_on_message', "INTEGER NOT NULL DEFAULT 0");
+
+// A note being typed up for the *next* status change, saved automatically
+// as staff type (see the Update Status section of a return's page) so it
+// survives a page refresh even before the status itself is changed. It's
+// copied into return_status_history and cleared out the moment the status
+// actually changes - see the /returns/:id/status route.
+ensureColumn('returns', 'pending_status_note', "TEXT NOT NULL DEFAULT ''");
 
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
