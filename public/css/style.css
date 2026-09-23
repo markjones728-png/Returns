@@ -196,6 +196,20 @@ h2 { font-size: 17px; margin: 0 0 12px; color: var(--ink); }
 .btn-tiny { font-size: 12px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); background: white; color: var(--ink); cursor: pointer; }
 .btn-tiny:hover { background: var(--bg); }
 
+.message-thread { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.message-bubble { border-radius: 10px; padding: 10px 14px; max-width: 85%; border: 1px solid var(--border); }
+.message-staff { background: #eff6ff; align-self: flex-start; }
+.message-customer { background: var(--bg); align-self: flex-end; }
+.message-meta { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.message-body { white-space: pre-wrap; word-break: break-word; font-size: 14px; }
+
+.unread-badge { display: inline-block; margin-left: 6px; background: #0284c7; color: white; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+
+.autosave-indicator { display: inline-block; margin-left: 10px; font-size: 13px; color: var(--muted); opacity: 0; transition: opacity 0.2s ease; }
+.autosave-indicator-visible { opacity: 1; }
+.autosave-indicator-error { color: var(--danger); font-weight: 600; }
+.autosave-lastsaved:empty { display: none; }
+
 .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .bar-label { width: 220px; flex-shrink: 0; font-size: 14px; }
 .bar-track { flex: 1; background: var(--bg); border-radius: 6px; height: 18px; overflow: hidden; }
