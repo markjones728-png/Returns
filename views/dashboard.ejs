@@ -28,7 +28,7 @@
   <tbody>
     <% rows.forEach(r => { %>
       <tr>
-        <td><%= r.reference %></td>
+        <td><%= r.reference %> <% if (unreadCounts[r.id]) { %><span class="unread-badge">💬 <%= unreadCounts[r.id] %> new</span><% } %></td>
         <td><%= r.company_name %></td>
         <td><%= r.contact_name %></td>
         <td><%= r.make %> <%= r.model %></td>
