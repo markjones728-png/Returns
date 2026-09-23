@@ -252,6 +252,40 @@ async function sendDailyBackupEmail(recipients, zipBuffer, dateStr) {
   });
 }
 
+// Sent to the customer every time a staff member sends them a message from
+// a return's Messages section (there's no tick box for this one - staff
+// messages to a customer are always emailed, since the customer has no
+// account/login and would otherwise have no way of knowing a message is
+// waiting for them).
+async function sendCustomerMessageEmail(returnRecord, messageBody, trackUrl) {
+  const subject = `New message about your return ${returnRecord.reference}`;
+  const html = `
+    <p>Dear ${escapeHtml(returnRecord.contact_name)},</p>
+    <p>You've received a new message about your return <strong>${escapeHtml(returnRecord.reference)}</strong>
+    (${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)}):</p>
+    <p style="padding:12px 16px;background:#f8fafc;border-left:3px solid #0284c7;white-space:pre-wrap;">${escapeHtml(messageBody)}</p>
+    ${trackUrl ? `<p><a href="${trackUrl}" style="display:inline-block;padding:10px 20px;background:#0284c7;color:#fff;text-decoration:none;border-radius:6px;">View &amp; reply on your Track a Return page &raquo;</a></p>` : ''}
+    <p>Kind regards,<br/>Returns Team</p>
+  `;
+  return sendMail({ to: returnRecord.email, subject, html });
+}
+
+// Internal-only: sent to whichever staff have ticked "New Messages" in the
+// admin Email Notifications area, whenever a customer replies on the Track
+// a Return page. Does nothing if nobody has opted in.
+async function sendStaffMessageAlert(returnRecord, messageBody, recipients, viewUrl) {
+  if (!recipients || !recipients.length) return { skipped: true };
+
+  const subject = `New customer message: ${returnRecord.reference} - ${returnRecord.company_name}`;
+  const html = `
+    <p>${escapeHtml(returnRecord.contact_name)} (${escapeHtml(returnRecord.company_name)}) has sent a new
+    message about return <strong>${escapeHtml(returnRecord.reference)}</strong>:</p>
+    <p style="padding:12px 16px;background:#f8fafc;border-left:3px solid #0284c7;white-space:pre-wrap;">${escapeHtml(messageBody)}</p>
+    ${viewUrl ? `<p><a href="${viewUrl}" style="display:inline-block;padding:10px 20px;background:#0284c7;color:#fff;text-decoration:none;border-radius:6px;">View &amp; reply in the portal &raquo;</a></p>` : ''}
+  `;
+  return sendMail({ to: recipients.join(', '), subject, html });
+}
+
 function escapeHtml(str = '') {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -260,4 +294,7 @@ function escapeHtml(str = '') {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail, sendDailyBackupEmail };
+module.exports = {
+  sendMail, sendReturnSubmittedEmail, sendStatusUpdateEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail,
+  sendReturnReportEmail, sendStaffInviteEmail, sendDailyBackupEmail, sendCustomerMessageEmail, sendStaffMessageAlert
+};
