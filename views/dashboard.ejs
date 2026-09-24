@@ -43,7 +43,14 @@
           <% } %>
         </td>
         <td><%= new Date(r.updated_at).toLocaleString('en-GB') %></td>
-        <td><a class="btn btn-small" href="/returns/<%= r.id %>">Open</a></td>
+        <td class="table-actions">
+          <a class="btn btn-small" href="/returns/<%= r.id %>">Open</a>
+          <% if (user.role === 'admin') { %>
+            <form action="/returns/<%= r.id %>/delete" method="POST" class="inline-form" onsubmit="return confirm('Permanently delete return ' + <%- JSON.stringify(r.reference) %> + '? This cannot be undone - its messages, history and uploaded files will be deleted too.');">
+              <button type="submit" class="btn btn-small btn-danger">Delete</button>
+            </form>
+          <% } %>
+        </td>
       </tr>
     <% }) %>
     <% if (rows.length === 0) { %>
