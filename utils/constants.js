@@ -1,56 +1,124 @@
-const { CLOSED_STATUS } = require('./constants');
-
-// The Dashboard groups every return into one of these stages instead of the
-// old two-tab Live/Archived split, so staff can see at a glance how many
-// returns are sat at each point in the process. This is also the order the
-// tabs appear in on the Dashboard, matching the order a return normally
-// moves through - see stageForReturn() below for how a return is assigned
-// to one of them.
-const DASHBOARD_STAGES = [
-  { key: 'new_return', label: 'New Return' },
-  { key: 'awaiting_collection', label: 'Awaiting Collection' },
-  { key: 'in_transit', label: 'In Transit' },
-  { key: 'at_returns', label: 'At Returns' },
-  { key: 'awaiting_manufacturer', label: 'Awaiting Manufacturer' },
-  { key: 'warranty_approved', label: 'Warranty Approved' },
-  { key: 'out_of_warranty', label: 'Out of Warranty' },
-  { key: 'damaged', label: 'Damaged' },
-  { key: 'no_fault_found', label: 'No Fault Found' },
-  { key: 'returned', label: 'Returned' },
-  { key: 'closed', label: 'Closed' }
+// Ordered list of statuses in the returns workflow.
+// The dashboard treats everything except the final status as "live"
+// and the final status as "archived".
+const STATUSES = [
+  'Return Submitted',
+  'Authorised for Collection',
+  'In Transit',
+  'At Returns Dept',
+  'Awaiting RT Italy',
+  'Awaiting Inspection by Returns',
+  'Inspected - Out Of Warranty',
+  'Inspected - Damaged',
+  'Inspected - No Fault Found',
+  'Inspected - Warranty Replacement Authorised (RTA)',
+  'Inspected - Warranty Replacement Authorised',
+  'Report Sent',
+  'Return Closed'
 ];
 
-// Works out which of the stages above a given return currently belongs
-// under. Checked in this order:
-//   1. Closed always wins, whatever else is true.
-//   2. The "Manufacturer Confirmed Warranty Repair" tick (RT Italy Warranty
-//      Claim section) puts it under Warranty Approved, and keeps it there
-//      even after the report's been sent - it only leaves once closed.
-//   3. Otherwise its plain status decides it. Awaiting RT Italy and
-//      Awaiting Inspection by Returns are grouped together as "Awaiting
-//      Manufacturer". Everything left over - Inspected - Warranty
-//      Replacement Authorised (RTA)/without RTA (before that tick is set)
-//      and Report Sent - falls under "Returned", since the outcome's been
-//      reached and/or the report's gone out, but it isn't a manufacturer-
-//      confirmed warranty job and it isn't closed yet either.
-function stageForReturn(r) {
-  if (r.status === CLOSED_STATUS) return 'closed';
-  if (r.rt_italy_manufacturer_confirmed) return 'warranty_approved';
+const CLOSED_STATUS = 'Return Closed';
 
-  switch (r.status) {
-    case 'Return Submitted': return 'new_return';
-    case 'Authorised for Collection': return 'awaiting_collection';
-    case 'In Transit': return 'in_transit';
-    case 'At Returns Dept': return 'at_returns';
-    case 'Awaiting RT Italy':
-    case 'Awaiting Inspection by Returns':
-      return 'awaiting_manufacturer';
-    case 'Inspected - Out Of Warranty': return 'out_of_warranty';
-    case 'Inspected - Damaged': return 'damaged';
-    case 'Inspected - No Fault Found': return 'no_fault_found';
-    default:
-      return 'returned';
-  }
-}
+// Statuses where a Manufacturer RMA Number box should be shown on the
+// Update Status form (see return-detail.ejs).
+const STATUSES_NEEDING_RMA_NUMBER = [
+  'Inspected - Out Of Warranty',
+  'Inspected - Damaged',
+  'Inspected - Warranty Replacement Authorised (RTA)',
+  'Inspected - Warranty Replacement Authorised'
+];
 
-module.exports = { DASHBOARD_STAGES, stageForReturn };
+// Statuses where a separate RTA RT Number box should also be shown -
+// this is that manufacturer's own reference number, distinct from the
+// general Manufacturer RMA Number above.
+const STATUSES_NEEDING_RTA_NUMBER = [
+  'Inspected - Warranty Replacement Authorised (RTA)'
+];
+
+// Colour used for each status pill in the UI
+const STATUS_COLORS = {
+  'Return Submitted': '#64748b',
+  'Authorised for Collection': '#0284c7',
+  'In Transit': '#2563eb',
+  'At Returns Dept': '#7c3aed',
+  'Awaiting RT Italy': '#9333ea',
+  'Awaiting Inspection by Returns': '#c026d3',
+  'Inspected - Out Of Warranty': '#ea580c',
+  'Inspected - Damaged': '#b91c1c',
+  'Inspected - No Fault Found': '#65a30d',
+  'Inspected - Warranty Replacement Authorised (RTA)': '#059669',
+  'Inspected - Warranty Replacement Authorised': '#0d9488',
+  'Report Sent': '#0891b2',
+  'Return Closed': '#334155'
+};
+
+// --- Options for the Roger Technology inspection/test form ---
+const APPLICATION_TYPES = ['Residential', 'Commercial', 'Industrial', 'Other'];
+const PRODUCT_TYPES = ['Sliding Gate', 'Swing Gate', 'Barrier', 'Bollard', 'Garage Door', 'Industrial Door', 'Other'];
+const TEST_RESULTS = [
+  'Repair required - Warranty',
+  'Repair required - Not warranty',
+  'Faulty - Unrepairable - Warrantied',
+  'Faulty - Unrepairable - Not Warrantied',
+  'No Fault Found',
+  'Referred to RT Italy',
+  'Unable to Test'
+];
+
+// Options for the "Received Condition" check done when the item first
+// arrives at the returns department - internal/staff use only, see below.
+const RECEIVED_PARTS_STATUSES = ['All Parts Present', 'Parts Missing'];
+
+// --- Options added to match the Roger Technology "Warranty Repair Return
+// --- Form" that the returns department fills in on paper today. Only the
+// --- fields NOT already captured from the customer's own submission are
+// --- added here (see return-detail.ejs comments for the full mapping).
+const RT_PRODUCT_TYPES = [
+  'Ram Actuator (Swing)', 'Articulated Arm', 'Underground Motor',
+  'Sliding Gate Motor', 'Control Board', 'Accessory: Photocells / Intercom / Remote / Other'
+];
+const INSTALLATION_AGE_OPTIONS = ['Less than 1 month', '1-6 months', '6-12 months', '1-2 years', 'Out of warranty'];
+const FAULT_OCCURRENCE_OPTIONS = ['Constantly', 'Intermittently', 'Weather-dependent (Rain / Cold / Heat)', 'Upon initial power-up'];
+const ARRIVAL_CONDITION_FLAGS = ['No visible damage', 'Visible damage', 'Missing parts', 'Signs of water ingress'];
+const WARRANTY_VERDICT_OPTIONS = ['Approved Warranty', 'Rejected Warranty'];
+const REJECTION_REASONS = [
+  'Power surge / lightning damage',
+  'Water ingress due to poor sealing during installation',
+  'Mechanical overload - gate too heavy or unbalanced for motor specification',
+  'Pest damage causing circuit board short',
+  'Physical damage / wear and tear',
+  'Other'
+];
+const ACTION_TAKEN_OPTIONS = ['Replaced under warranty', 'Repaired', 'Scrapped', 'Returned to customer as-is'];
+
+// How the RT Italy Warranty Claim was actually sent over to RT Italy - part
+// of the RT Italy Warranty Claim section (internal/staff use only).
+const RT_ITALY_CLAIM_METHODS = ['Whatsapp', 'Returns email'];
+
+// Root cause of the fault, picked by staff as part of the Warranty
+// Determination step - used by the Reports page to spot trends by
+// equipment type (see routes/returns.js's /reports route).
+const FAULT_CATEGORIES = [
+  'User Error', 'Manufacturing Defect', 'Misuse', 'Installation Error',
+  'No Fault Found', 'Transit Damage', 'Wear and Tear'
+];
+
+// Access Control Ltd / RT Automation's own details, as they appear on the
+// Roger Technology "Request for Authorisation to Return Product for
+// Inspection" form's Dealer Details section. These are always the same for
+// every return, so they're hardcoded here rather than entered per-return.
+const DEALER_DETAILS = {
+  tradingName: 'RT Automation',
+  operator: 'Returns Team',
+  telephone: '01572 868 388',
+  email: 'returns@rtautomation.co.uk'
+};
+
+module.exports = {
+  STATUSES, CLOSED_STATUS, STATUS_COLORS, STATUSES_NEEDING_RMA_NUMBER, STATUSES_NEEDING_RTA_NUMBER,
+  APPLICATION_TYPES, PRODUCT_TYPES,
+  TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
+  RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+  RT_ITALY_CLAIM_METHODS
+};
