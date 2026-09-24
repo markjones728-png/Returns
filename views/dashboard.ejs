@@ -4,7 +4,7 @@
   <h1>Returns Dashboard</h1>
   <div class="dashboard-head-actions">
     <form action="/dashboard" method="GET" class="search-form">
-      <input type="hidden" name="tab" value="<%= tab %>" />
+      <input type="hidden" name="stage" value="<%= stage %>" />
       <input type="text" name="q" placeholder="Search reference, company, serial..." value="<%= q %>" />
       <button type="submit" class="btn btn-secondary">Search</button>
     </form>
@@ -13,11 +13,10 @@
 </div>
 
 <div class="tabs">
-  <a href="/dashboard?tab=live&q=<%= encodeURIComponent(q) %>" class="tab <%= tab === 'live' ? 'active' : '' %>">Live (<%= live.length %>)</a>
-  <a href="/dashboard?tab=archived&q=<%= encodeURIComponent(q) %>" class="tab <%= tab === 'archived' ? 'active' : '' %>">Archived (<%= archived.length %>)</a>
+  <% stages.forEach(s => { %>
+    <a href="/dashboard?stage=<%= s.key %>&q=<%= encodeURIComponent(q) %>" class="tab <%= stage === s.key ? 'active' : '' %>"><%= s.label %> (<%= stageCounts[s.key] %>)</a>
+  <% }) %>
 </div>
-
-<% const rows = tab === 'archived' ? archived : live; %>
 
 <table class="table">
   <thead>
