@@ -224,6 +224,3 @@ h2 { font-size: 17px; margin: 0 0 12px; color: var(--ink); }
 @media (max-width: 700px) {
   .form-grid, .grid-2 { grid-template-columns: 1fr; }
 }
-@media (max-width: 700px) {
-  .form-grid, .grid-2 { grid-template-columns: 1fr; }
-}
