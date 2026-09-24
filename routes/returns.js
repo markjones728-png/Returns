@@ -10,7 +10,8 @@ const {
   APPLICATION_TYPES, PRODUCT_TYPES,
   TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+  RT_ITALY_CLAIM_METHODS
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath, UPLOAD_ROOT } = require('../utils/files');
@@ -152,6 +153,7 @@ router.get('/returns/:id', (req, res) => {
     TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
     RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
     WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+    RT_ITALY_CLAIM_METHODS,
     user: req.session.user
   });
 });
@@ -296,6 +298,38 @@ router.post('/returns/:id/warranty', (req, res) => {
     return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
   }
   res.redirect(`/returns/${returnRow.id}#warranty`);
+});
+
+// --- Staff: RT Italy Warranty Claim - the paperwork trail once a claim has ---
+// --- actually been submitted over to RT Italy. Internal/staff use only,    ---
+// --- same as Warranty Determination above - never shown to customers.      ---
+router.post('/returns/:id/rt-italy-claim', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const {
+    rt_italy_claim_date, rt_italy_claim_method, rt_italy_staff_name,
+    rt_italy_batch_code, rt_italy_rma, rt_italy_manufacturer_notes
+  } = req.body;
+
+  db.prepare(`
+    UPDATE returns SET
+      rt_italy_claim_date = ?, rt_italy_claim_method = ?, rt_italy_staff_name = ?,
+      rt_italy_batch_code = ?, rt_italy_rma = ?, rt_italy_manufacturer_notes = ?,
+      rt_italy_completed_by = ?, rt_italy_completed_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(
+    rt_italy_claim_date || '', rt_italy_claim_method || '', rt_italy_staff_name || '',
+    rt_italy_batch_code || '', rt_italy_rma || '', rt_italy_manufacturer_notes || '',
+    req.session.user.name,
+    returnRow.id
+  );
+
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
+  res.redirect(`/returns/${returnRow.id}#rt-italy-claim`);
 });
 
 // --- Admin only: correct/edit the details the customer originally typed  ---
