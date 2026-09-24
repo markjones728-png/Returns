@@ -230,6 +230,13 @@ ensureColumn('returns', 'rt_italy_manufacturer_notes', "TEXT NOT NULL DEFAULT ''
 ensureColumn('returns', 'rt_italy_completed_by', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'rt_italy_completed_at', "TEXT");
 
+// Ticked once RT Italy (the manufacturer) has actually confirmed they'll
+// honour the warranty repair - separate from insp_warranty_verdict above,
+// which is only staff's own initial Approved/Rejected Warranty decision.
+// Drives the Dashboard's "Warranty Approved" tab (see utils/stages.js) -
+// once ticked, a return stays under that tab right through to Closed.
+ensureColumn('returns', 'rt_italy_manufacturer_confirmed', "INTEGER NOT NULL DEFAULT 0");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
