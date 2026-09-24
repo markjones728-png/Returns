@@ -509,4 +509,18 @@
   </ul>
 </div>
 
+<% if (user.role === 'admin') { %>
+<div class="card danger-zone">
+  <h2>Delete Return</h2>
+  <p class="muted">
+    Permanently removes this return, including its messages, status history and uploaded
+    photos/videos/documents. This cannot be undone - there is no "restore" button, only your
+    backups. Use this to clear out test entries or duplicates, not live customer returns.
+  </p>
+  <form action="/returns/<%= r.id %>/delete" method="POST" class="inline-form" onsubmit="return confirm('Permanently delete return ' + <%- JSON.stringify(r.reference) %> + '? This cannot be undone - its messages, history and uploaded files will be deleted too.');">
+    <button type="submit" class="btn btn-danger">Delete This Return</button>
+  </form>
+</div>
+<% } %>
+
 <%- include('partials/footer') %>
