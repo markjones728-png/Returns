@@ -13,6 +13,7 @@ const {
   WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
   RT_ITALY_CLAIM_METHODS
 } = require('../utils/constants');
+const { DASHBOARD_STAGES, stageForReturn } = require('../utils/stages');
 const { upload } = require('../utils/upload');
 const { saveFilesToDisk, filePath, UPLOAD_ROOT } = require('../utils/files');
 const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail, sendCustomerMessageEmail } = require('../utils/email');
@@ -33,7 +34,7 @@ function isAutosave(req) {
 
 router.get('/dashboard', (req, res) => {
   const q = (req.query.q || '').trim();
-  const tab = req.query.tab === 'archived' ? 'archived' : 'live';
+  const stage = DASHBOARD_STAGES.some((s) => s.key === req.query.stage) ? req.query.stage : DASHBOARD_STAGES[0].key;
 
   let rows;
   if (q) {
@@ -56,11 +57,17 @@ router.get('/dashboard', (req, res) => {
   const unreadCounts = {};
   unreadRows.forEach((u) => { unreadCounts[u.return_id] = u.c; });
 
-  const live = rows.filter((r) => r.status !== CLOSED_STATUS);
-  const archived = rows.filter((r) => r.status === CLOSED_STATUS);
+  // Every return is grouped into exactly one of the DASHBOARD_STAGES (see
+  // utils/stages.js) - counted here for the tab labels, then filtered down
+  // to just the ones in the currently selected tab.
+  const stageCounts = {};
+  DASHBOARD_STAGES.forEach((s) => { stageCounts[s.key] = 0; });
+  const rowsWithStage = rows.map((r) => ({ r, stage: stageForReturn(r) }));
+  rowsWithStage.forEach(({ stage: s }) => { stageCounts[s] = (stageCounts[s] || 0) + 1; });
+  const visibleRows = rowsWithStage.filter(({ stage: s }) => s === stage).map(({ r }) => r);
 
   res.render('dashboard', {
-    live, archived, tab, q,
+    rows: visibleRows, stages: DASHBOARD_STAGES, stage, stageCounts, q,
     statusColors: STATUS_COLORS,
     unreadCounts,
     user: req.session.user
@@ -311,17 +318,20 @@ router.post('/returns/:id/rt-italy-claim', (req, res) => {
     rt_italy_claim_date, rt_italy_claim_method, rt_italy_staff_name,
     rt_italy_batch_code, rt_italy_rma, rt_italy_manufacturer_notes
   } = req.body;
+  const manufacturerConfirmed = req.body.rt_italy_manufacturer_confirmed ? 1 : 0;
 
   db.prepare(`
     UPDATE returns SET
       rt_italy_claim_date = ?, rt_italy_claim_method = ?, rt_italy_staff_name = ?,
       rt_italy_batch_code = ?, rt_italy_rma = ?, rt_italy_manufacturer_notes = ?,
+      rt_italy_manufacturer_confirmed = ?,
       rt_italy_completed_by = ?, rt_italy_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
   `).run(
     rt_italy_claim_date || '', rt_italy_claim_method || '', rt_italy_staff_name || '',
     rt_italy_batch_code || '', rt_italy_rma || '', rt_italy_manufacturer_notes || '',
+    manufacturerConfirmed,
     req.session.user.name,
     returnRow.id
   );
