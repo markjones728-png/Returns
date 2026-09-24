@@ -91,6 +91,10 @@ const REJECTION_REASONS = [
 ];
 const ACTION_TAKEN_OPTIONS = ['Replaced under warranty', 'Repaired', 'Scrapped', 'Returned to customer as-is'];
 
+// How the RT Italy Warranty Claim was actually sent over to RT Italy - part
+// of the RT Italy Warranty Claim section (internal/staff use only).
+const RT_ITALY_CLAIM_METHODS = ['Whatsapp', 'Returns email'];
+
 // Root cause of the fault, picked by staff as part of the Warranty
 // Determination step - used by the Reports page to spot trends by
 // equipment type (see routes/returns.js's /reports route).
@@ -115,5 +119,6 @@ module.exports = {
   APPLICATION_TYPES, PRODUCT_TYPES,
   TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+  RT_ITALY_CLAIM_METHODS
 };
