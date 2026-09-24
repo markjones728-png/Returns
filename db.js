@@ -229,13 +229,27 @@ if (userCount === 0) {
   console.log(`Seeded default staff login -> username: "${defaultUsername}" password: "${defaultPassword}" (change this after first login!)`);
 }
 
+// Tracked as its own persistent counter in app_settings, one per calendar
+// year, rather than being worked out from the returns already in the table.
+// Now that returns can be deleted (see /returns/:id/delete), counting or
+// scanning existing rows would let a brand new return be handed the exact
+// same reference number as one that was just removed - e.g. delete the only
+// return of the year and the very next submission would go straight back to
+// -0001. This counter only ever goes up, so a reference number is never
+// reused even after everything using it has been deleted.
 function nextReference() {
   const year = new Date().getFullYear();
-  const row = db.prepare(
-    `SELECT COUNT(*) AS c FROM returns WHERE reference LIKE ?`
-  ).get(`RT-${year}-%`);
-  const seq = String(row.c + 1).padStart(4, '0');
-  return `RT-${year}-${seq}`;
+  const key = `reference_seq_${year}`;
+
+  const row = db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
+  const seq = (row ? parseInt(row.value, 10) : 0) + 1;
+
+  db.prepare(`
+    INSERT INTO app_settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, String(seq));
+
+  return `RT-${year}-${String(seq).padStart(4, '0')}`;
 }
 
 module.exports = { db, nextReference, STATUSES };
