@@ -416,6 +416,15 @@
     <label class="full">Manufacturer Notes
       <textarea name="rt_italy_manufacturer_notes" rows="3"><%= r.rt_italy_manufacturer_notes %></textarea>
     </label>
+    <label class="checkbox-label full">
+      <input type="checkbox" name="rt_italy_manufacturer_confirmed" <%= r.rt_italy_manufacturer_confirmed ? 'checked' : '' %> />
+      Manufacturer Confirmed Warranty Repair
+    </label>
+    <p class="muted full" style="margin-top:-8px;">
+      Tick this once RT Italy has actually confirmed they'll honour the warranty repair - it moves
+      this return into the "Warranty Approved" tab on the Dashboard, and it'll stay there right
+      through to Closed.
+    </p>
     <button type="submit" class="btn btn-primary full">Save RT Italy Warranty Claim</button>
   </form>
   <p class="muted autosave-lastsaved"><% if (r.rt_italy_completed_by) { %>Last saved by <%= r.rt_italy_completed_by %> on <%= new Date(r.rt_italy_completed_at).toLocaleString('en-GB') %><% } %></p>
