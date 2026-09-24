@@ -382,6 +382,45 @@
   })();
 </script>
 
+<div class="card" id="rt-italy-claim">
+  <h2>RT Italy Warranty Claim</h2>
+  <p class="muted">
+    Internal/staff use only - records the paperwork trail once this return's warranty claim has
+    actually been submitted over to RT Italy for them to action. This is never included on
+    anything emailed or shown to the customer. Saves automatically as you fill it in.
+  </p>
+  <form action="/returns/<%= r.id %>/rt-italy-claim" method="POST" class="form-grid autosave-form">
+    <label>Date Submitted
+      <input type="date" name="rt_italy_claim_date" value="<%= r.rt_italy_claim_date %>" />
+    </label>
+    <label>How the Claim Was Sent
+      <select name="rt_italy_claim_method">
+        <option value="">-- Select --</option>
+        <% RT_ITALY_CLAIM_METHODS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.rt_italy_claim_method === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+        <% if (r.rt_italy_claim_method && !RT_ITALY_CLAIM_METHODS.includes(r.rt_italy_claim_method)) { %>
+          <option value="<%= r.rt_italy_claim_method %>" selected>(Previous option) <%= r.rt_italy_claim_method %></option>
+        <% } %>
+      </select>
+    </label>
+    <label>Staff's Name
+      <input type="text" name="rt_italy_staff_name" value="<%= r.rt_italy_staff_name %>" placeholder="Who submitted the claim" />
+    </label>
+    <label>Batch Code
+      <input type="text" name="rt_italy_batch_code" value="<%= r.rt_italy_batch_code %>" />
+    </label>
+    <label>RT Italy RMA
+      <input type="text" name="rt_italy_rma" value="<%= r.rt_italy_rma %>" />
+    </label>
+    <label class="full">Manufacturer Notes
+      <textarea name="rt_italy_manufacturer_notes" rows="3"><%= r.rt_italy_manufacturer_notes %></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary full">Save RT Italy Warranty Claim</button>
+  </form>
+  <p class="muted autosave-lastsaved"><% if (r.rt_italy_completed_by) { %>Last saved by <%= r.rt_italy_completed_by %> on <%= new Date(r.rt_italy_completed_at).toLocaleString('en-GB') %><% } %></p>
+</div>
+
 <div class="card">
   <h2>Update Status</h2>
   <p class="muted">
