@@ -217,6 +217,19 @@ ensureColumn('users', 'notify_on_message', "INTEGER NOT NULL DEFAULT 0");
 // actually changes - see the /returns/:id/status route.
 ensureColumn('returns', 'pending_status_note', "TEXT NOT NULL DEFAULT ''");
 
+// RT Italy Warranty Claim section - records the paperwork trail once a
+// return's warranty claim has actually been submitted over to RT Italy for
+// them to action. Internal/staff use only, same as Warranty Determination -
+// never shown to customers (see views/track.ejs and utils/pdf.js).
+ensureColumn('returns', 'rt_italy_claim_date', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_claim_method', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_staff_name', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_batch_code', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_rma', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_manufacturer_notes', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_completed_by', "TEXT NOT NULL DEFAULT ''");
+ensureColumn('returns', 'rt_italy_completed_at', "TEXT");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
