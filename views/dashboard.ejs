@@ -22,7 +22,7 @@
 <table class="table">
   <thead>
     <tr>
-      <th>Reference</th><th>Company</th><th>Contact</th><th>Equipment</th><th>Status</th><th>Updated</th><th></th>
+      <th>Reference</th><th>Company</th><th>Contact</th><th>Equipment</th><th>Status</th><th>Final Outcome</th><th>Updated</th><th></th>
     </tr>
   </thead>
   <tbody>
@@ -33,12 +33,21 @@
         <td><%= r.contact_name %></td>
         <td><%= r.make %> <%= r.model %></td>
         <td><span class="status-pill" style="background:<%= statusColors[r.status] || '#64748b' %>"><%= r.status %></span></td>
+        <td>
+          <% if (r.insp_warranty_verdict === 'Approved Warranty') { %>
+            <span class="status-pill" style="background:#16a34a;">Approved Warranty</span>
+          <% } else if (r.insp_warranty_verdict === 'Rejected Warranty') { %>
+            <span class="status-pill" style="background:#dc2626;">Rejected Warranty</span>
+          <% } else { %>
+            <span class="muted">&mdash;</span>
+          <% } %>
+        </td>
         <td><%= new Date(r.updated_at).toLocaleString('en-GB') %></td>
         <td><a class="btn btn-small" href="/returns/<%= r.id %>">Open</a></td>
       </tr>
     <% }) %>
     <% if (rows.length === 0) { %>
-      <tr><td colspan="7" class="muted">No returns found.</td></tr>
+      <tr><td colspan="8" class="muted">No returns found.</td></tr>
     <% } %>
   </tbody>
 </table>
