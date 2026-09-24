@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { db, nextReference } = require('../db');
@@ -12,7 +13,7 @@ const {
   WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES
 } = require('../utils/constants');
 const { upload } = require('../utils/upload');
-const { saveFilesToDisk, filePath } = require('../utils/files');
+const { saveFilesToDisk, filePath, UPLOAD_ROOT } = require('../utils/files');
 const { sendStatusUpdateEmail, sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendReturnCompletedEmail, sendReturnReportEmail, sendStaffInviteEmail, sendCustomerMessageEmail } = require('../utils/email');
 const { getNotifyRecipients } = require('../utils/notifications');
 const { generateReturnPdf, generateReturnPdfBuffer } = require('../utils/pdf');
@@ -357,6 +358,32 @@ router.post('/returns/:id/archive', async (req, res) => {
   await sendReturnCompletedEmail(updated, history, getNotifyRecipients('notify_on_completed'));
 
   res.redirect(`/returns/${returnRow.id}`);
+});
+
+// --- Admin only: permanently delete a return - used to clear out test/
+// --- duplicate entries. Unlike Archive above, this can't be undone: it
+// --- removes the return's messages, status history and file records from
+// --- the database, and deletes its uploaded photos/videos/documents from
+// --- disk, before removing the return itself. Both the Dashboard and the
+// --- return's own page confirm with the reference number before submitting
+// --- this, since there's no "restore" feature - only your backups.
+router.post('/returns/:id/delete', requireAdmin, (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  db.prepare('DELETE FROM return_messages WHERE return_id = ?').run(returnRow.id);
+  db.prepare('DELETE FROM return_status_history WHERE return_id = ?').run(returnRow.id);
+  db.prepare('DELETE FROM return_files WHERE return_id = ?').run(returnRow.id);
+  db.prepare('DELETE FROM returns WHERE id = ?').run(returnRow.id);
+
+  const uploadDir = path.join(UPLOAD_ROOT, returnRow.reference);
+  if (fs.existsSync(uploadDir)) {
+    fs.rmSync(uploadDir, { recursive: true, force: true });
+  }
+
+  // Came from the Dashboard row's Delete button vs. the return's own page -
+  // either way, land back on the Dashboard since the return no longer exists.
+  res.redirect('/dashboard');
 });
 
 router.post('/returns/:id/status', async (req, res) => {
