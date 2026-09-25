@@ -217,10 +217,14 @@ ensureColumn('users', 'notify_on_message', "INTEGER NOT NULL DEFAULT 0");
 // actually changes - see the /returns/:id/status route.
 ensureColumn('returns', 'pending_status_note', "TEXT NOT NULL DEFAULT ''");
 
-// RT Italy Warranty Claim section - records the paperwork trail once a
-// return's warranty claim has actually been submitted over to RT Italy for
-// them to action. Internal/staff use only, same as Warranty Determination -
-// never shown to customers (see views/track.ejs and utils/pdf.js).
+// Manufacturer Warranty Claim section - records the paperwork trail once a
+// return's warranty claim has actually been submitted over to the
+// manufacturer for them to action. Internal/staff use only, same as
+// Warranty Determination - never shown to customers (see views/track.ejs
+// and utils/pdf.js). The rt_italy_* column names are historic (this section
+// only used to cover RT Italy specifically) but are now used for a claim
+// with any manufacturer - kept as-is rather than renamed, so existing data
+// isn't disturbed.
 ensureColumn('returns', 'rt_italy_claim_date', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'rt_italy_claim_method', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'rt_italy_staff_name', "TEXT NOT NULL DEFAULT ''");
@@ -230,13 +234,22 @@ ensureColumn('returns', 'rt_italy_manufacturer_notes', "TEXT NOT NULL DEFAULT ''
 ensureColumn('returns', 'rt_italy_completed_by', "TEXT NOT NULL DEFAULT ''");
 ensureColumn('returns', 'rt_italy_completed_at', "TEXT");
 
-// Ticked once RT Italy (the manufacturer) has actually confirmed they'll
-// honour the warranty repair - separate from insp_warranty_verdict above,
-// which is only staff's own initial Approved/Rejected Warranty decision.
-// Drives the Dashboard's "Warranty Approved" tab (see utils/stages.js) -
-// once ticked, a return stays under that tab right through to Closed.
+// Ticked once the manufacturer has actually confirmed they'll honour the
+// warranty repair - separate from insp_warranty_verdict above, which is
+// only staff's own initial Approved/Rejected Warranty decision. Drives the
+// Dashboard's "Warranty Approved" tab (see utils/stages.js) - once ticked,
+// a return stays under that tab right through to Closed.
 ensureColumn('returns', 'rt_italy_manufacturer_confirmed', "INTEGER NOT NULL DEFAULT 0");
 
+// Which manufacturer a claim was actually submitted to (e.g. "Roger
+// Technology", "FAAC", "CAME") - free text since it varies per return, part
+// of the Manufacturer Warranty Claim section above.
+ensureColumn('returns', 'manufacturer_name', "TEXT NOT NULL DEFAULT ''");
+
+// Who's actually covering the cost of the repair - one of
+// WARRANTY_COVERED_BY_OPTIONS (utils/constants.js), part of the
+// Manufacturer Warranty Claim section above.
+ensureColumn('returns', 'warranty_covered_by', "TEXT NOT NULL DEFAULT ''");
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
