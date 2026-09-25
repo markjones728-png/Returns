@@ -10,7 +10,7 @@ const {
   APPLICATION_TYPES, PRODUCT_TYPES,
   TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
   CLAIM_METHODS, WARRANTY_COVERED_BY_OPTIONS
 } = require('../utils/constants');
 const { DASHBOARD_STAGES, stageForReturn } = require('../utils/stages');
@@ -159,11 +159,12 @@ router.get('/returns/:id', (req, res) => {
     APPLICATION_TYPES, PRODUCT_TYPES,
     TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
     RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-       WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
     CLAIM_METHODS, WARRANTY_COVERED_BY_OPTIONS,
     user: req.session.user
   });
 });
+
 // --- Staff: send a chat message to the customer about this return. Always ---
 // --- emails the customer (they have no login), and marks itself as        ---
 // --- already-read since it's staff's own message.                        ---
@@ -306,6 +307,44 @@ router.post('/returns/:id/warranty', (req, res) => {
   res.redirect(`/returns/${returnRow.id}#warranty`);
 });
 
+// --- Staff: Manufacturer Warranty Claim - the paperwork trail once a claim ---
+// --- has actually been submitted over to the manufacturer. Internal/staff  ---
+// --- use only, same as Warranty Determination above - never shown to       ---
+// --- customers. (Route path and rt_italy_* field names are historic - this ---
+// --- now covers a claim with any manufacturer, not just RT Italy.)         ---
+router.post('/returns/:id/rt-italy-claim', (req, res) => {
+  const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
+  if (!returnRow) return res.status(404).send('Return not found.');
+
+  const {
+    manufacturer_name, rt_italy_claim_date, rt_italy_claim_method, rt_italy_staff_name,
+    rt_italy_batch_code, rt_italy_rma, warranty_covered_by, rt_italy_manufacturer_notes
+  } = req.body;
+  const manufacturerConfirmed = req.body.rt_italy_manufacturer_confirmed ? 1 : 0;
+
+  db.prepare(`
+    UPDATE returns SET
+      manufacturer_name = ?,
+      rt_italy_claim_date = ?, rt_italy_claim_method = ?, rt_italy_staff_name = ?,
+      rt_italy_batch_code = ?, rt_italy_rma = ?, warranty_covered_by = ?, rt_italy_manufacturer_notes = ?,
+      rt_italy_manufacturer_confirmed = ?,
+      rt_italy_completed_by = ?, rt_italy_completed_at = datetime('now'),
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(
+    manufacturer_name || '',
+    rt_italy_claim_date || '', rt_italy_claim_method || '', rt_italy_staff_name || '',
+    rt_italy_batch_code || '', rt_italy_rma || '', warranty_covered_by || '', rt_italy_manufacturer_notes || '',
+    manufacturerConfirmed,
+    req.session.user.name,
+    returnRow.id
+  );
+
+  if (isAutosave(req)) {
+    return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
+  }
+  res.redirect(`/returns/${returnRow.id}#rt-italy-claim`);
+});
 
 // --- Admin only: correct/edit the details the customer originally typed  ---
 // --- in at submission, in case of a mistake at booking-in or details     ---
