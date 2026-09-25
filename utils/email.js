@@ -46,8 +46,8 @@ async function sendReturnSubmittedEmail(returnRecord) {
     <p>Dear ${escapeHtml(returnRecord.contact_name)},</p>
     <p>Thank you for submitting a return to Roger Technology. Your reference number is
     <strong>${escapeHtml(returnRecord.reference)}</strong>.</p>
-    <p><strong>Equipment:</strong> ${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)}
-    (Serial: ${escapeHtml(returnRecord.serial_number)})</p>
+          <strong>Equipment:</strong> ${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)} (Serial / BC Code: ${escapeHtml(returnRecord.serial_number)})<br/>
+       (Serial / BC Code: ${escapeHtml(returnRecord.serial_number)})</p>
     <p><strong>Fault reported:</strong> ${escapeHtml(returnRecord.fault_description)}</p>
     <p>Our returns team has started processing your return and will keep you updated as it
     progresses. Please quote your reference number in any correspondence.</p>
@@ -127,7 +127,7 @@ async function sendReturnCompletedEmail(returnRecord, statusHistory = [], recipi
     <p>
       <strong>Type:</strong> ${escapeHtml(returnRecord.equipment_type)}<br/>
       <strong>Make / Model:</strong> ${escapeHtml(returnRecord.make)} ${escapeHtml(returnRecord.model)}<br/>
-      <strong>Serial number:</strong> ${escapeHtml(returnRecord.serial_number)}<br/>
+            <strong>Serial Number / BC Code:</strong> ${escapeHtml(returnRecord.serial_number)}<br/>
       <strong>Fault reported:</strong> ${escapeHtml(returnRecord.fault_description)}
     </p>
 
