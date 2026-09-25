@@ -120,6 +120,21 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
     ]);
   }
 
+  // Internal-only: paperwork trail once a warranty claim has actually been
+  // submitted over to the manufacturer. Excluded from the customer-facing copy.
+  if (internal && (returnRecord.manufacturer_name || returnRecord.rt_italy_claim_date || returnRecord.rt_italy_claim_method || returnRecord.rt_italy_staff_name || returnRecord.rt_italy_batch_code || returnRecord.rt_italy_rma || returnRecord.warranty_covered_by || returnRecord.rt_italy_manufacturer_notes)) {
+    section(doc, 'Manufacturer Warranty Claim', [
+      ['Manufacturer', returnRecord.manufacturer_name],
+      ['Date submitted', returnRecord.rt_italy_claim_date],
+      ['How the claim was sent', returnRecord.rt_italy_claim_method],
+      ["Staff's name", returnRecord.rt_italy_staff_name],
+      ['Batch code', returnRecord.rt_italy_batch_code],
+      ['Claim reference number', returnRecord.rt_italy_rma],
+      ['Warranty covered by', returnRecord.warranty_covered_by],
+      ['Manufacturer notes', returnRecord.rt_italy_manufacturer_notes]
+    ]);
+  }
+
   if (returnRecord.manufacturer_rma_number || returnRecord.rta_rt_number) {
     section(doc, 'Reference Numbers', [
       ['Manufacturer RMA number', returnRecord.manufacturer_rma_number],
