@@ -41,7 +41,7 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
     ['Equipment type', returnRecord.equipment_type],
     ['Make', returnRecord.make],
     ['Model', returnRecord.model],
-    ['Serial number', returnRecord.serial_number]
+      ['Serial Number / BC Code', returnRecord.serial_number]
   ]);
 
   section(doc, 'Collection Details', [
