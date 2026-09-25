@@ -91,9 +91,16 @@ const REJECTION_REASONS = [
 ];
 const ACTION_TAKEN_OPTIONS = ['Replaced under warranty', 'Repaired', 'Scrapped', 'Returned to customer as-is'];
 
-// How the RT Italy Warranty Claim was actually sent over to RT Italy - part
-// of the RT Italy Warranty Claim section (internal/staff use only).
-const RT_ITALY_CLAIM_METHODS = ['Whatsapp', 'Returns email'];
+// How a Manufacturer Warranty Claim was actually sent over to the
+// manufacturer - part of the Manufacturer Warranty Claim section
+// (internal/staff use only).
+const CLAIM_METHODS = ['Whatsapp', 'Returns email'];
+
+// Who's actually covering the cost of a warranty repair - part of the
+// Manufacturer Warranty Claim section. "RT Midlands" covers the odd case
+// where it's decided to honour the repair ourselves rather than claim it
+// back from the manufacturer.
+const WARRANTY_COVERED_BY_OPTIONS = ['Manufacturer', 'RT Midlands'];
 
 // Root cause of the fault, picked by staff as part of the Warranty
 // Determination step - used by the Reports page to spot trends by
