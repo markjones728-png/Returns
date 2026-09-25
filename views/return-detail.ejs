@@ -95,7 +95,7 @@
     <label>Model *
       <input type="text" name="model" value="<%= r.model %>" required />
     </label>
-    <label>Serial Number *
+       <label>Serial Number / BC Code *
       <input type="text" name="serial_number" value="<%= r.serial_number %>" required />
     </label>
     <label class="full">Description of Fault *
@@ -153,7 +153,7 @@
     <p><strong>Type:</strong> <%= r.equipment_type %></p>
     <p><strong>Make:</strong> <%= r.make %></p>
     <p><strong>Model:</strong> <%= r.model %></p>
-    <p><strong>Serial Number:</strong> <%= r.serial_number %></p>
+        <p><strong>Serial Number / BC Code:</strong> <%= r.serial_number %></p>
     <% if (r.manufacturer_rma_number) { %>
       <p><strong>Manufacturer RMA Number:</strong> <%= r.manufacturer_rma_number %></p>
     <% } %>
@@ -383,23 +383,26 @@
 </script>
 
 <div class="card" id="rt-italy-claim">
-  <h2>RT Italy Warranty Claim</h2>
+  <h2>Manufacturer Warranty Claim</h2>
   <p class="muted">
     Internal/staff use only - records the paperwork trail once this return's warranty claim has
-    actually been submitted over to RT Italy for them to action. This is never included on
+    actually been submitted over to the manufacturer for them to action. This is never included on
     anything emailed or shown to the customer. Saves automatically as you fill it in.
   </p>
   <form action="/returns/<%= r.id %>/rt-italy-claim" method="POST" class="form-grid autosave-form">
+    <label>Manufacturer Name
+      <input type="text" name="manufacturer_name" value="<%= r.manufacturer_name %>" placeholder="e.g. Roger Technology" />
+    </label>
     <label>Date Submitted
       <input type="date" name="rt_italy_claim_date" value="<%= r.rt_italy_claim_date %>" />
     </label>
     <label>How the Claim Was Sent
       <select name="rt_italy_claim_method">
         <option value="">-- Select --</option>
-        <% RT_ITALY_CLAIM_METHODS.forEach(o => { %>
+        <% CLAIM_METHODS.forEach(o => { %>
           <option value="<%= o %>" <%= r.rt_italy_claim_method === o ? 'selected' : '' %>><%= o %></option>
         <% }) %>
-        <% if (r.rt_italy_claim_method && !RT_ITALY_CLAIM_METHODS.includes(r.rt_italy_claim_method)) { %>
+        <% if (r.rt_italy_claim_method && !CLAIM_METHODS.includes(r.rt_italy_claim_method)) { %>
           <option value="<%= r.rt_italy_claim_method %>" selected>(Previous option) <%= r.rt_italy_claim_method %></option>
         <% } %>
       </select>
@@ -410,8 +413,19 @@
     <label>Batch Code
       <input type="text" name="rt_italy_batch_code" value="<%= r.rt_italy_batch_code %>" />
     </label>
-    <label>RT Italy RMA
-      <input type="text" name="rt_italy_rma" value="<%= r.rt_italy_rma %>" />
+    <label>Claim Reference Number
+      <input type="text" name="rt_italy_rma" value="<%= r.rt_italy_rma %>" placeholder="The manufacturer's own reference for this claim" />
+    </label>
+    <label>Warranty Covered By
+      <select name="warranty_covered_by">
+        <option value="">-- Select --</option>
+        <% WARRANTY_COVERED_BY_OPTIONS.forEach(o => { %>
+          <option value="<%= o %>" <%= r.warranty_covered_by === o ? 'selected' : '' %>><%= o %></option>
+        <% }) %>
+        <% if (r.warranty_covered_by && !WARRANTY_COVERED_BY_OPTIONS.includes(r.warranty_covered_by)) { %>
+          <option value="<%= r.warranty_covered_by %>" selected>(Previous option) <%= r.warranty_covered_by %></option>
+        <% } %>
+      </select>
     </label>
     <label class="full">Manufacturer Notes
       <textarea name="rt_italy_manufacturer_notes" rows="3"><%= r.rt_italy_manufacturer_notes %></textarea>
@@ -421,11 +435,11 @@
       Manufacturer Confirmed Warranty Repair
     </label>
     <p class="muted full" style="margin-top:-8px;">
-      Tick this once RT Italy has actually confirmed they'll honour the warranty repair - it moves
-      this return into the "Warranty Approved" tab on the Dashboard, and it'll stay there right
-      through to Closed.
+      Tick this once the manufacturer has actually confirmed they'll honour the warranty repair -
+      it moves this return into the "Warranty Approved" tab on the Dashboard, and it'll stay there
+      right through to Closed.
     </p>
-    <button type="submit" class="btn btn-primary full">Save RT Italy Warranty Claim</button>
+    <button type="submit" class="btn btn-primary full">Save Manufacturer Warranty Claim</button>
   </form>
   <p class="muted autosave-lastsaved"><% if (r.rt_italy_completed_by) { %>Last saved by <%= r.rt_italy_completed_by %> on <%= new Date(r.rt_italy_completed_at).toLocaleString('en-GB') %><% } %></p>
 </div>
