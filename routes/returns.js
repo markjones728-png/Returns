@@ -185,38 +185,30 @@ router.post('/returns/:id/messages', async (req, res) => {
   res.redirect(`/returns/${returnRow.id}#messages`);
 });
 
-// --- Staff: Manufacturer Warranty Claim - the paperwork trail once a claim ---
-// --- has actually been submitted over to the manufacturer. Internal/staff  ---
-// --- use only, same as Warranty Determination above - never shown to       ---
-// --- customers. (Route path and rt_italy_* field names are historic - this ---
-// --- now covers a claim with any manufacturer, not just RT Italy.)         ---
-router.post('/returns/:id/rt-italy-claim', (req, res) => {
+// --- Staff: Roger Technology inspection form (filled in on receipt) ---
+router.post('/returns/:id/inspection', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
-  const {
-    manufacturer_name, rt_italy_claim_date, rt_italy_claim_method, rt_italy_staff_name,
-    rt_italy_batch_code, rt_italy_rma, warranty_covered_by, rt_italy_manufacturer_notes
-  } = req.body;
-  const manufacturerConfirmed = req.body.rt_italy_manufacturer_confirmed ? 1 : 0;
+  // Matches the Roger Technology Warranty Repair Return Form's "Product
+  // Information" and "Reported Fault" sections - everything else on that
+  // form (customer/product identity, RMA number, date received) is already
+  // captured elsewhere, and the fields specific to the older "Request for
+  // Authorisation to Return Product for Inspection" form have been retired.
+  const { insp_invoice_number, insp_rt_product_type, insp_installation_age, insp_fault_occurrence } = req.body;
 
   db.prepare(`
     UPDATE returns SET
-      manufacturer_name = ?,
-      rt_italy_claim_date = ?, rt_italy_claim_method = ?, rt_italy_staff_name = ?,
-      rt_italy_batch_code = ?, rt_italy_rma = ?, warranty_covered_by = ?, rt_italy_manufacturer_notes = ?,
-      rt_italy_manufacturer_confirmed = ?,
-      rt_italy_completed_by = ?, rt_italy_completed_at = datetime('now'),
+      insp_invoice_number = ?, insp_rt_product_type = ?, insp_installation_age = ?, insp_fault_occurrence = ?,
+      insp_completed_by = ?, insp_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    manufacturer_name || '',
-    rt_italy_claim_date || '', rt_italy_claim_method || '', rt_italy_staff_name || '',
-    rt_italy_batch_code || '', rt_italy_rma || '', warranty_covered_by || '', rt_italy_manufacturer_notes || '',
-    manufacturerConfirmed,
+    insp_invoice_number || '', insp_rt_product_type || '', insp_installation_age || '', insp_fault_occurrence || '',
     req.session.user.name,
     returnRow.id
   );
+
   if (isAutosave(req)) {
     return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
   }
