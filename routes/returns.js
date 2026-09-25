@@ -10,8 +10,8 @@ const {
   APPLICATION_TYPES, PRODUCT_TYPES,
   TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
   RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-  WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
-  RT_ITALY_CLAIM_METHODS
+    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+  CLAIM_METHODS, WARRANTY_COVERED_BY_OPTIONS
 } = require('../utils/constants');
 const { DASHBOARD_STAGES, stageForReturn } = require('../utils/stages');
 const { upload } = require('../utils/upload');
@@ -159,12 +159,11 @@ router.get('/returns/:id', (req, res) => {
     APPLICATION_TYPES, PRODUCT_TYPES,
     TEST_RESULTS, RECEIVED_PARTS_STATUSES, DEALER_DETAILS,
     RT_PRODUCT_TYPES, INSTALLATION_AGE_OPTIONS, FAULT_OCCURRENCE_OPTIONS, ARRIVAL_CONDITION_FLAGS,
-    WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
-    RT_ITALY_CLAIM_METHODS,
+       WARRANTY_VERDICT_OPTIONS, REJECTION_REASONS, ACTION_TAKEN_OPTIONS, FAULT_CATEGORIES,
+    CLAIM_METHODS, WARRANTY_COVERED_BY_OPTIONS,
     user: req.session.user
   });
 });
-
 // --- Staff: send a chat message to the customer about this return. Always ---
 // --- emails the customer (they have no login), and marks itself as        ---
 // --- already-read since it's staff's own message.                        ---
@@ -186,30 +185,38 @@ router.post('/returns/:id/messages', async (req, res) => {
   res.redirect(`/returns/${returnRow.id}#messages`);
 });
 
-// --- Staff: Roger Technology inspection form (filled in on receipt) ---
-router.post('/returns/:id/inspection', (req, res) => {
+// --- Staff: Manufacturer Warranty Claim - the paperwork trail once a claim ---
+// --- has actually been submitted over to the manufacturer. Internal/staff  ---
+// --- use only, same as Warranty Determination above - never shown to       ---
+// --- customers. (Route path and rt_italy_* field names are historic - this ---
+// --- now covers a claim with any manufacturer, not just RT Italy.)         ---
+router.post('/returns/:id/rt-italy-claim', (req, res) => {
   const returnRow = db.prepare('SELECT * FROM returns WHERE id = ?').get(req.params.id);
   if (!returnRow) return res.status(404).send('Return not found.');
 
-  // Matches the Roger Technology Warranty Repair Return Form's "Product
-  // Information" and "Reported Fault" sections - everything else on that
-  // form (customer/product identity, RMA number, date received) is already
-  // captured elsewhere, and the fields specific to the older "Request for
-  // Authorisation to Return Product for Inspection" form have been retired.
-  const { insp_invoice_number, insp_rt_product_type, insp_installation_age, insp_fault_occurrence } = req.body;
+  const {
+    manufacturer_name, rt_italy_claim_date, rt_italy_claim_method, rt_italy_staff_name,
+    rt_italy_batch_code, rt_italy_rma, warranty_covered_by, rt_italy_manufacturer_notes
+  } = req.body;
+  const manufacturerConfirmed = req.body.rt_italy_manufacturer_confirmed ? 1 : 0;
 
   db.prepare(`
     UPDATE returns SET
-      insp_invoice_number = ?, insp_rt_product_type = ?, insp_installation_age = ?, insp_fault_occurrence = ?,
-      insp_completed_by = ?, insp_completed_at = datetime('now'),
+      manufacturer_name = ?,
+      rt_italy_claim_date = ?, rt_italy_claim_method = ?, rt_italy_staff_name = ?,
+      rt_italy_batch_code = ?, rt_italy_rma = ?, warranty_covered_by = ?, rt_italy_manufacturer_notes = ?,
+      rt_italy_manufacturer_confirmed = ?,
+      rt_italy_completed_by = ?, rt_italy_completed_at = datetime('now'),
       updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    insp_invoice_number || '', insp_rt_product_type || '', insp_installation_age || '', insp_fault_occurrence || '',
+    manufacturer_name || '',
+    rt_italy_claim_date || '', rt_italy_claim_method || '', rt_italy_staff_name || '',
+    rt_italy_batch_code || '', rt_italy_rma || '', warranty_covered_by || '', rt_italy_manufacturer_notes || '',
+    manufacturerConfirmed,
     req.session.user.name,
     returnRow.id
   );
-
   if (isAutosave(req)) {
     return res.json({ ok: true, savedBy: req.session.user.name, savedAt: new Date().toISOString() });
   }
@@ -730,7 +737,7 @@ router.get('/reports/export', (req, res) => {
     ['Equipment Type', (r) => r.equipment_type],
     ['Make', (r) => r.make],
     ['Model', (r) => r.model],
-    ['Serial Number', (r) => r.serial_number],
+    ['Serial Number / BC Code', (r) => r.serial_number],
     ['Fault Description', (r) => r.fault_description],
     ['Fault Category', (r) => r.fault_category],
     ['Manufacturer RMA Number', (r) => r.manufacturer_rma_number],
