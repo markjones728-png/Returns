@@ -12,6 +12,16 @@ const DB_PATH = path.join(PERSIST_DIR, 'data', 'returns.db');
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 const db = new DatabaseSync(DB_PATH);
 
+// Without this, if the database file is ever momentarily busy from another
+// write happening at the same instant (e.g. two returns being submitted
+// within the same split second, or briefly during a deploy restart), SQLite
+// throws "database is locked" straight away rather than just waiting a
+// moment for its turn - and since that error wasn't being caught anywhere,
+// it was crashing the entire server, showing up to a customer as a 502 at
+// exactly the moment they hit Send. This makes it wait up to 5 seconds for
+// its turn instead of giving up immediately.
+db.exec('PRAGMA busy_timeout = 5000');
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -250,6 +260,7 @@ ensureColumn('returns', 'manufacturer_name', "TEXT NOT NULL DEFAULT ''");
 // WARRANTY_COVERED_BY_OPTIONS (utils/constants.js), part of the
 // Manufacturer Warranty Claim section above.
 ensureColumn('returns', 'warranty_covered_by', "TEXT NOT NULL DEFAULT ''");
+
 // Seed a default admin user if no users exist yet
 const userCount = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
 if (userCount === 0) {
@@ -274,13 +285,27 @@ function nextReference() {
   const year = new Date().getFullYear();
   const key = `reference_seq_${year}`;
 
-  const row = db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
-  const seq = (row ? parseInt(row.value, 10) : 0) + 1;
+  // Reading the current number and writing back the next one used to be two
+  // separate steps - if two returns were ever submitted at almost exactly
+  // the same moment, both could read the same "current" number before
+  // either had written back the increment, so both would be handed the
+  // SAME reference number. The second one to actually save then failed the
+  // database's own rule that every reference must be unique - and because
+  // nothing was catching that error, it crashed the whole server (the 502
+  // reported on submitting the form). Doing the read-and-increment as a
+  // single statement, as below, closes that gap completely: there's no
+  // moment where two submissions can both see the same "next" number.
+  const row = db.prepare(`
+    INSERT INTO app_settings (key, value) VALUES (?, '1')
+    ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)
+    RETURNING value
+  `).get(key);
 
-  db.prepare(`
-    INSERT INTO app_settings (key, value) VALUES (?, ?)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-  `).run(key, String(seq));
+  const seq = parseInt(row.value, 10);
+  return `RT-${year}-${String(seq).padStart(4, '0')}`;
+}
+
+module.exports = { db, nextReference, STATUSES };
 
   return `RT-${year}-${String(seq).padStart(4, '0')}`;
 }
