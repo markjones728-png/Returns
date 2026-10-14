@@ -17,7 +17,17 @@ function saveFilesToDisk(reference, files, kindPrefix) {
   return files.map((file) => {
     const ext = path.extname(file.originalname) || '';
     const safeName = `${crypto.randomBytes(8).toString('hex')}${ext}`;
-    fs.writeFileSync(path.join(dir, safeName), file.buffer);
+    const destPath = path.join(dir, safeName);
+    if (file.path) {
+      // Normal case: multer (utils/upload.js) already streamed this file to
+      // a temp folder on disk - just move it into place, no need to ever
+      // hold the whole file in memory.
+      fs.renameSync(file.path, destPath);
+    } else if (file.buffer) {
+      // Fallback, kept only in case anything ever calls this with an
+      // in-memory file (e.g. multer.memoryStorage()).
+      fs.writeFileSync(destPath, file.buffer);
+    }
     const baseKind = file.mimetype.startsWith('video/')
       ? 'video'
       : file.mimetype === 'application/pdf'
@@ -36,4 +46,4 @@ function filePath(reference, filename) {
   return path.join(UPLOAD_ROOT, reference, filename);
 }
 
-module.exports = { saveFilesToDisk, filePath, UPLOAD_ROOT };
+module.exports = { saveFilesToDisk, filePath, UPLOAD_ROOT, PERSIST_DIR };
