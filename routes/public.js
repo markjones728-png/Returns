@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const { db, nextReference } = require('../db');
 const { APPLICATION_TYPES, PRODUCT_TYPES } = require('../utils/constants');
-const { upload } = require('../utils/upload');
+const { upload, cleanupTempFiles } = require('../utils/upload');
 const { saveFilesToDisk, filePath } = require('../utils/files');
 const { sendReturnSubmittedEmail, sendNewReturnStaffAlert, sendStaffMessageAlert } = require('../utils/email');
 const { getNotifyRecipients } = require('../utils/notifications');
@@ -29,68 +29,80 @@ router.post('/submit', (req, res, next) => {
     next();
   });
 }, async (req, res) => {
-  const {
-    company_name, contact_name, phone, email,
-    collection_address, collection_hours, premises_type, courier_contact_number,
-    equipment_type, make, model, serial_number, fault_description,
-    insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date
-  } = req.body;
+  try {
+    const {
+      company_name, contact_name, phone, email,
+      collection_address, collection_hours, premises_type, courier_contact_number,
+      equipment_type, make, model, serial_number, fault_description,
+      insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date
+    } = req.body;
 
-  if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
-    return res.render('submit', { error: 'Please fill in all required fields.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
-  }
+    if (!company_name || !contact_name || !phone || !email || !collection_address || !collection_hours || !premises_type || !courier_contact_number || !equipment_type || !make || !model || !serial_number || !fault_description) {
+      cleanupTempFiles(req.files);
+      return res.render('submit', { error: 'Please fill in all required fields.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
+    }
 
-  // Every Terms & Conditions box on the form must be ticked - checked here as
-  // well as via the "required" attribute on each checkbox, in case a browser
-  // ever lets the form through without enforcing it client-side.
-  const TERMS_FIELDS = ['terms_returning_goods', 'terms_collection_date', 'terms_return_to_stock', 'terms_warranty_repair', 'terms_chargeable_repair'];
-  const allTermsAccepted = TERMS_FIELDS.every((f) => !!req.body[f]);
-  if (!allTermsAccepted) {
-    return res.render('submit', { error: 'Please tick every Terms & Conditions statement before submitting your return.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
-  }
+    // Every Terms & Conditions box on the form must be ticked - checked here as
+    // well as via the "required" attribute on each checkbox, in case a browser
+    // ever lets the form through without enforcing it client-side.
+    const TERMS_FIELDS = ['terms_returning_goods', 'terms_collection_date', 'terms_return_to_stock', 'terms_warranty_repair', 'terms_chargeable_repair'];
+    const allTermsAccepted = TERMS_FIELDS.every((f) => !!req.body[f]);
+    if (!allTermsAccepted) {
+      cleanupTempFiles(req.files);
+      return res.render('submit', { error: 'Please tick every Terms & Conditions statement before submitting your return.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
+    }
 
-  const reference = nextReference();
+    const reference = nextReference();
 
-  db.prepare(`
-    INSERT INTO returns (
+    db.prepare(`
+      INSERT INTO returns (
+        reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
+        equipment_type, make, model, serial_number, fault_description,
+        insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
+        status, terms_accepted_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted', datetime('now'))
+    `).run(
       reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
       equipment_type, make, model, serial_number, fault_description,
-      insp_application_type, insp_product_type, insp_dimensions, insp_weight, insp_install_date,
-      status, terms_accepted_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Return Submitted', datetime('now'))
-  `).run(
-    reference, company_name, contact_name, phone, email, collection_address, collection_hours, premises_type, courier_contact_number,
-    equipment_type, make, model, serial_number, fault_description,
-    insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || ''
-  );
+      insp_application_type || '', insp_product_type || '', insp_dimensions || '', insp_weight || '', insp_install_date || ''
+    );
 
-  const returnRow = db.prepare('SELECT * FROM returns WHERE reference = ?').get(reference);
+    const returnRow = db.prepare('SELECT * FROM returns WHERE reference = ?').get(reference);
 
-  db.prepare(`
-    INSERT INTO return_status_history (return_id, status, changed_by, note)
-    VALUES (?, 'Return Submitted', ?, 'Return submitted by customer')
-  `).run(returnRow.id, contact_name);
+    db.prepare(`
+      INSERT INTO return_status_history (return_id, status, changed_by, note)
+      VALUES (?, 'Return Submitted', ?, 'Return submitted by customer')
+    `).run(returnRow.id, contact_name);
 
-  if (req.files && req.files.length) {
-    const saved = saveFilesToDisk(reference, req.files);
-    const stmt = db.prepare(`
-      INSERT INTO return_files (return_id, filename, original_name, mime_type, kind, uploaded_by)
-      VALUES (?, ?, ?, ?, ?, 'customer')
-    `);
-    saved.forEach((f) => stmt.run(returnRow.id, f.filename, f.original_name, f.mime_type, f.kind));
+    if (req.files && req.files.length) {
+      const saved = saveFilesToDisk(reference, req.files);
+      const stmt = db.prepare(`
+        INSERT INTO return_files (return_id, filename, original_name, mime_type, kind, uploaded_by)
+        VALUES (?, ?, ?, ?, ?, 'customer')
+      `);
+      saved.forEach((f) => stmt.run(returnRow.id, f.filename, f.original_name, f.mime_type, f.kind));
+    }
+
+    await sendReturnSubmittedEmail(returnRow);
+
+    // Also alert whichever staff have opted in to "New Submissions" in the
+    // admin Email Notifications area, if any.
+    const submitRecipients = getNotifyRecipients('notify_on_submitted');
+    if (submitRecipients.length) {
+      await sendNewReturnStaffAlert(returnRow, submitRecipients, `${baseUrl(req)}/returns/${returnRow.id}`);
+    }
+
+    res.render('submit-success', { reference });
+  } catch (err) {
+    // Belt-and-braces: if anything above goes wrong unexpectedly, show the
+    // customer a friendly error on the submit page instead of the request
+    // just hanging/erroring with no explanation. See server.js for the
+    // app-wide safety net this backs up.
+    console.error('Error submitting return:', err);
+    cleanupTempFiles(req.files);
+    res.render('submit', { error: 'Sorry, something went wrong submitting your return. Please try again - if it keeps happening, please call or email us instead.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
   }
-
-  await sendReturnSubmittedEmail(returnRow);
-
-  // Also alert whichever staff have opted in to "New Submissions" in the
-  // admin Email Notifications area, if any.
-  const submitRecipients = getNotifyRecipients('notify_on_submitted');
-  if (submitRecipients.length) {
-    await sendNewReturnStaffAlert(returnRow, submitRecipients, `${baseUrl(req)}/returns/${returnRow.id}`);
-  }
-
-  res.render('submit-success', { reference });
 });
 
 // Public tracking: customer looks up their return with reference + email.
