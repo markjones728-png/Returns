@@ -307,5 +307,7 @@ function nextReference() {
 
 module.exports = { db, nextReference, STATUSES };
 
+module.exports = { db, nextReference, STATUSES };
+
   return `RT-${year}-${String(seq).padStart(4, '0')}`;
 }
