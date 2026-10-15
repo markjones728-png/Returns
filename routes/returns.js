@@ -32,6 +32,24 @@ function isAutosave(req) {
   return req.get('X-Autosave') === '1';
 }
 
+// --- TEMPORARY, ONE-OFF: used to correct the reference number counter    ---
+// --- after the bug fixed in db.js. Admin-only. Remove this whole block   ---
+// --- once it's been used - see the instructions given alongside it.      ---
+router.get('/admin/set-reference-counter', requireAdmin, (req, res) => {
+  const year = new Date().getFullYear();
+  const key = `reference_seq_${year}`;
+  const value = parseInt(req.query.value, 10);
+  if (!req.query.value || Number.isNaN(value) || value < 0) {
+    return res.status(400).send('Add ?value=42 (or whatever number it should continue from) to the end of this page\'s address.');
+  }
+  db.prepare(`
+    INSERT INTO app_settings (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run(key, String(value));
+  const next = `RT-${year}-${String(value + 1).padStart(4, '0')}`;
+  res.send(`Done. The ${year} reference counter is now set to ${value} - the next return submitted will be ${next}. You can now remove this temporary route from routes/returns.js.`);
+});
+
 router.get('/dashboard', (req, res) => {
   const q = (req.query.q || '').trim();
   const stage = DASHBOARD_STAGES.some((s) => s.key === req.query.stage) ? req.query.stage : DASHBOARD_STAGES[0].key;
