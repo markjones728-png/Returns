@@ -1,6 +1,48 @@
 const fs = require('fs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
 const { filePath } = require('./files');
+const { STATUS_COLORS } = require('./constants');
+
+// --- Look & feel -----------------------------------------------------------
+const COLOR_DARK = '#0f172a';
+const COLOR_LABEL = '#475569';
+const COLOR_MUTED = '#94a3b8';
+const COLOR_ACCENT = '#d65131'; // RT Automation brand orange, sampled from the logo
+const COLOR_BAND_BG = '#fdf2ee'; // light accent-tinted band behind each section heading
+const COLOR_BORDER = '#e2e8f0';
+const COLOR_WHITE = '#ffffff';
+const PAGE_MARGIN = 50;
+
+// The RT Automation logo used on the website header (views/partials/header.ejs)
+// also lives here as an actual image file, so the PDF letterhead can use it -
+// see the comment above LOGO_PATH for what to do if it's ever missing.
+const LOGO_PATH = path.join(__dirname, '..', 'public', 'images', 'logo.png');
+
+// Strips/replaces characters that the PDF's standard font can't display.
+// Text pasted in from Outlook/Word (e.g. into Test Notes) often carries
+// Unicode punctuation and paragraph-separator characters that aren't part of
+// this font's character set - previously these rendered as a stray "Ð" at
+// the end of every pasted paragraph. Anything still left over after these
+// substitutions is swapped for "?" rather than showing as a broken symbol.
+function safeText(value) {
+  if (value === null || value === undefined) return '';
+  var str = String(value);
+  var out = '';
+  for (var i = 0; i < str.length; i++) {
+    var code = str.charCodeAt(i);
+    if (code === 0x2028 || code === 0x2029) { out += '\n'; continue; }
+    if (code === 0x00A0 || (code >= 0x2000 && code <= 0x200A) || code === 0x202F || code === 0x205F || code === 0x3000) { out += ' '; continue; }
+    if ((code >= 0x200B && code <= 0x200F) || code === 0x2060 || code === 0xFEFF) { continue; }
+    if (code === 0x2018 || code === 0x2019 || code === 0x201A || code === 0x201B) { out += "'"; continue; }
+    if (code === 0x201C || code === 0x201D || code === 0x201E || code === 0x201F) { out += '"'; continue; }
+    if (code >= 0x2012 && code <= 0x2015) { out += '-'; continue; }
+    if (code === 0x2026) { out += '...'; continue; }
+    if (code === 9 || code === 10 || code === 13 || (code >= 0x20 && code <= 0x7E) || (code >= 0xA1 && code <= 0xFF)) { out += str[i]; continue; }
+    out += '?';
+  }
+  return out;
+}
 
 // opts.internal controls whether staff-only content (Item Received
 // Condition, and all uploaded photos) is included. This must stay false for
@@ -8,27 +50,61 @@ const { filePath } = require('./files');
 // generateReturnPdfBuffer below.
 function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
   const internal = !!opts.internal;
-  // Header
-  doc
-    .fontSize(20)
-    .fillColor('#0f172a')
-    .text('Roger Technology', { continued: false })
-    .fontSize(14)
-    .fillColor('#334155')
-    .text('Customer Return Report');
-  doc.moveDown(0.5);
-  doc
-    .fontSize(10)
-    .fillColor('#64748b')
-    .text(`Generated: ${new Date().toLocaleString('en-GB')}`);
-  doc.moveDown();
-  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#e2e8f0').stroke();
-  doc.moveDown();
+  const left = doc.page.margins.left;
+  const contentWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  // Reference & status
-  doc.fontSize(16).fillColor('#0f172a').text(`Reference: ${returnRecord.reference}`);
-  doc.fontSize(12).fillColor('#0284c7').text(`Current status: ${returnRecord.status}`);
-  doc.moveDown();
+  // --- Letterhead: logo on the left, report title/timestamp on the right ---
+  const logoWidth = 150;
+  const logoHeight = 34; // matches the logo's own aspect ratio (520x119)
+  let letterheadBottom = doc.y;
+
+  if (fs.existsSync(LOGO_PATH)) {
+    try {
+      doc.image(LOGO_PATH, left, doc.y, { width: logoWidth });
+      letterheadBottom = Math.max(letterheadBottom, doc.y + logoHeight);
+    } catch (err) {
+      // If the logo file is ever missing/corrupt, carry on without it
+      // rather than failing to generate the report at all.
+    }
+  }
+
+  const titleBlockWidth = contentWidth - logoWidth - 10;
+  doc
+    .font('Helvetica-Bold').fontSize(14).fillColor(COLOR_DARK)
+    .text('Customer Return Report', left + logoWidth + 10, doc.y, { width: titleBlockWidth, align: 'right' });
+  doc
+    .font('Helvetica').fontSize(9).fillColor(COLOR_MUTED)
+    .text(`Generated: ${new Date().toLocaleString('en-GB')}`, left + logoWidth + 10, doc.y, { width: titleBlockWidth, align: 'right' });
+  letterheadBottom = Math.max(letterheadBottom, doc.y);
+
+  doc.x = left;
+  doc.y = letterheadBottom + 10;
+  doc.moveTo(left, doc.y).lineTo(left + contentWidth, doc.y).lineWidth(2).strokeColor(COLOR_ACCENT).stroke();
+  doc.lineWidth(1);
+  doc.y += 16;
+  doc.x = left;
+
+  // --- Reference, with the current status as a coloured badge ---
+  const refRowY = doc.y;
+  doc.font('Helvetica-Bold').fontSize(17).fillColor(COLOR_DARK)
+    .text(`Reference: ${returnRecord.reference}`, left, refRowY);
+
+  const statusText = returnRecord.status || '';
+  const statusColor = STATUS_COLORS[returnRecord.status] || COLOR_LABEL;
+  doc.font('Helvetica-Bold').fontSize(10);
+  const badgePadX = 10;
+  const badgeHeight = 20;
+  const badgeWidth = doc.widthOfString(statusText) + badgePadX * 2;
+  const badgeX = left + contentWidth - badgeWidth;
+  const badgeY = refRowY - 1;
+  doc.roundedRect(badgeX, badgeY, badgeWidth, badgeHeight, 4).fill(statusColor);
+  doc.fillColor(COLOR_WHITE)
+    .text(statusText, badgeX, badgeY + 5, { width: badgeWidth, align: 'center' });
+
+  doc.font('Helvetica');
+  doc.x = left;
+  doc.y = Math.max(refRowY + 24, badgeY + badgeHeight + 4);
+  doc.moveDown(0.6);
 
   section(doc, 'Customer Details', [
     ['Company', returnRecord.company_name],
@@ -41,7 +117,7 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
     ['Equipment type', returnRecord.equipment_type],
     ['Make', returnRecord.make],
     ['Model', returnRecord.model],
-      ['Serial Number / BC Code', returnRecord.serial_number]
+    ['Serial Number / BC Code', returnRecord.serial_number]
   ]);
 
   section(doc, 'Collection Details', [
@@ -110,7 +186,7 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
 
   // Internal-only: final warranty decision, matching the Warranty Repair
   // Return Form's section 5. Excluded from the customer-facing copy.
- if (internal && (returnRecord.insp_warranty_verdict || returnRecord.insp_rejection_reason || returnRecord.insp_action_taken || returnRecord.fault_category || returnRecord.insp_warranty_summary)) {
+  if (internal && (returnRecord.insp_warranty_verdict || returnRecord.insp_rejection_reason || returnRecord.insp_action_taken || returnRecord.fault_category || returnRecord.insp_warranty_summary)) {
     section(doc, 'Warranty Determination & Final Verdict', [
       ['Final status', returnRecord.insp_warranty_verdict],
       ['Reason for rejection', returnRecord.insp_rejection_reason],
@@ -149,21 +225,24 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
   // right now, shown above as "Current status" - not every intermediate
   // status change or which staff member made it).
   if (internal) {
+    ensureSpace(doc, 60);
     doc.moveDown(0.5);
-    doc.fontSize(13).fillColor('#0f172a').text('Status History');
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(COLOR_DARK).text('Status History');
+    doc.font('Helvetica');
     doc.moveDown(0.3);
     statusHistory.forEach((h) => {
+      ensureSpace(doc, 16);
       doc
         .fontSize(10)
-        .fillColor('#334155')
-        .text(`${new Date(h.changed_at).toLocaleString('en-GB')}  —  ${h.status}${h.note ? `  (${h.note})` : ''}  [${h.changed_by}]`);
+        .fillColor(COLOR_LABEL)
+        .text(`${new Date(h.changed_at).toLocaleString('en-GB')}  -  ${safeText(h.status)}${h.note ? `  (${safeText(h.note)})` : ''}  [${safeText(h.changed_by)}]`);
     });
   }
 
   doc.moveDown(1);
   doc
     .fontSize(9)
-    .fillColor('#94a3b8')
+    .fillColor(COLOR_MUTED)
     .text('This report was generated automatically by the Roger Technology Returns Portal.', {
       align: 'center'
     });
@@ -174,6 +253,16 @@ function buildReturnPdfDoc(doc, returnRecord, statusHistory, files, opts = {}) {
   // excluded when this PDF is built for the customer.
   if (internal && files && files.length) {
     addPhotosSection(doc, files, returnRecord.reference);
+  }
+}
+
+// Adds a page break now if there isn't roughly enough room left on the
+// current page for whatever's about to be drawn - used to stop a section
+// heading (or a status history line) being stranded alone at the very
+// bottom of a page, separated from its own content.
+function ensureSpace(doc, neededHeight) {
+  if (doc.y + neededHeight > doc.page.height - doc.page.margins.bottom) {
+    doc.addPage();
   }
 }
 
@@ -219,31 +308,31 @@ function renderMediaInline(doc, images, videos, documents, reference) {
     doc.x = left;
     doc.y = y + renderHeight + 6;
 
-    let label = f.original_name;
-    if (f.caption) label += ` — ${f.caption}`;
-    doc.fontSize(9).fillColor('#64748b').text(label, left, doc.y, { width: maxWidth, align: 'center' });
+    let label = safeText(f.original_name);
+    if (f.caption) label += ` - ${safeText(f.caption)}`;
+    doc.fontSize(9).fillColor(COLOR_MUTED).text(label, left, doc.y, { width: maxWidth, align: 'center' });
     doc.moveDown(0.8);
     doc.x = left;
   });
 
   if (videos.length) {
     doc.x = left;
-    doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
+    doc.fontSize(10).fillColor(COLOR_LABEL).text('Videos (view in the Returns Portal - not embedded in this PDF):');
     videos.forEach((f) => {
-      let label = f.original_name;
-      if (f.caption) label += ` — ${f.caption}`;
-      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+      let label = safeText(f.original_name);
+      if (f.caption) label += ` - ${safeText(f.caption)}`;
+      doc.fontSize(10).fillColor(COLOR_DARK).text(`- ${label}`);
     });
     doc.moveDown(0.5);
   }
 
   if (documents.length) {
     doc.x = left;
-    doc.fontSize(10).fillColor('#475569').text('Documents (view in the Returns Portal - not embedded in this PDF):');
+    doc.fontSize(10).fillColor(COLOR_LABEL).text('Documents (view in the Returns Portal - not embedded in this PDF):');
     documents.forEach((f) => {
-      let label = f.original_name;
-      if (f.caption) label += ` — ${f.caption}`;
-      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+      let label = safeText(f.original_name);
+      if (f.caption) label += ` - ${safeText(f.caption)}`;
+      doc.fontSize(10).fillColor(COLOR_DARK).text(`- ${label}`);
     });
     doc.moveDown(0.5);
   }
@@ -257,7 +346,8 @@ function addPhotosSection(doc, files, reference) {
   if (!images.length && !videos.length && !documents.length) return;
 
   doc.addPage();
-  doc.fontSize(13).fillColor('#0f172a').text('Photos, Videos & Documents');
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(COLOR_DARK).text('Photos, Videos & Documents');
+  doc.font('Helvetica');
   doc.moveDown(0.3);
 
   const maxWidth = 495;
@@ -302,9 +392,9 @@ function addPhotosSection(doc, files, reference) {
     doc.x = left;
     doc.y = y + renderHeight + 6;
 
-    let label = f.original_name;
-    if (f.caption) label += ` — ${f.caption}`;
-    doc.fontSize(9).fillColor('#64748b').text(label, left, doc.y, { width: maxWidth, align: 'center' });
+    let label = safeText(f.original_name);
+    if (f.caption) label += ` - ${safeText(f.caption)}`;
+    doc.fontSize(9).fillColor(COLOR_MUTED).text(label, left, doc.y, { width: maxWidth, align: 'center' });
     doc.moveDown(0.8);
     doc.x = left;
   });
@@ -312,23 +402,50 @@ function addPhotosSection(doc, files, reference) {
   if (videos.length) {
     doc.x = left;
     doc.moveDown(0.3);
-    doc.fontSize(10).fillColor('#475569').text('Videos (view in the Returns Portal - not embedded in this PDF):');
+    doc.fontSize(10).fillColor(COLOR_LABEL).text('Videos (view in the Returns Portal - not embedded in this PDF):');
     videos.forEach((f) => {
-      let label = f.original_name;
-      if (f.caption) label += ` — ${f.caption}`;
-      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+      let label = safeText(f.original_name);
+      if (f.caption) label += ` - ${safeText(f.caption)}`;
+      doc.fontSize(10).fillColor(COLOR_DARK).text(`- ${label}`);
     });
   }
 
   if (documents.length) {
     doc.x = left;
     doc.moveDown(0.3);
-    doc.fontSize(10).fillColor('#475569').text('Documents (view in the Returns Portal - not embedded in this PDF):');
+    doc.fontSize(10).fillColor(COLOR_LABEL).text('Documents (view in the Returns Portal - not embedded in this PDF):');
     documents.forEach((f) => {
-      let label = f.original_name;
-      if (f.caption) label += ` — ${f.caption}`;
-      doc.fontSize(10).fillColor('#0f172a').text(`- ${label}`);
+      let label = safeText(f.original_name);
+      if (f.caption) label += ` - ${safeText(f.caption)}`;
+      doc.fontSize(10).fillColor(COLOR_DARK).text(`- ${label}`);
     });
+  }
+}
+
+// Draws "<reference>  -  Page X of Y" at the bottom of every page. Needs to
+// run after all of a document's content has been drawn (and the document
+// built with { bufferPages: true }), since the total page count isn't known
+// until then.
+function addPageFooters(doc, reference) {
+  const range = doc.bufferedPageRange();
+  for (let i = range.start; i < range.start + range.count; i++) {
+    doc.switchToPage(i);
+    const bottomMargin = doc.page.margins.bottom;
+    // PDFKit auto-inserts a new page if text would land past the bottom
+    // margin, even when given an explicit y - temporarily zeroing the
+    // bottom margin lets this draw inside that reserved space, on the
+    // existing page, instead of silently creating a blank extra one.
+    doc.page.margins.bottom = 0;
+    const bottom = doc.page.height - bottomMargin + 16;
+    doc
+      .font('Helvetica').fontSize(8).fillColor(COLOR_MUTED)
+      .text(
+        `${reference}  -  Page ${i - range.start + 1} of ${range.count}`,
+        doc.page.margins.left,
+        bottom,
+        { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'center', lineBreak: false }
+      );
+    doc.page.margins.bottom = bottomMargin;
   }
 }
 
@@ -336,7 +453,7 @@ function addPhotosSection(doc, files, reference) {
 // PDF Report" button). This is the internal/staff copy - it includes the
 // Item Received Condition section and every uploaded photo.
 function generateReturnPdf(returnRecord, statusHistory, files, res) {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: PAGE_MARGIN, bufferPages: true });
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(
@@ -346,6 +463,7 @@ function generateReturnPdf(returnRecord, statusHistory, files, res) {
   doc.pipe(res);
 
   buildReturnPdfDoc(doc, returnRecord, statusHistory, files, { internal: true });
+  addPageFooters(doc, returnRecord.reference);
 
   doc.end();
 }
@@ -355,7 +473,7 @@ function generateReturnPdf(returnRecord, statusHistory, files, res) {
 // content as generateReturnPdfBuffer below, just streamed instead of
 // buffered - internal-only content is left out entirely.
 function generateCustomerReturnPdf(returnRecord, statusHistory, res) {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: PAGE_MARGIN, bufferPages: true });
 
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(
@@ -365,6 +483,7 @@ function generateCustomerReturnPdf(returnRecord, statusHistory, res) {
   doc.pipe(res);
 
   buildReturnPdfDoc(doc, returnRecord, statusHistory, [], { internal: false });
+  addPageFooters(doc, returnRecord.reference);
 
   doc.end();
 }
@@ -375,7 +494,7 @@ function generateCustomerReturnPdf(returnRecord, statusHistory, res) {
 // left out entirely.
 function generateReturnPdfBuffer(returnRecord, statusHistory) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: PAGE_MARGIN, bufferPages: true });
     const chunks = [];
 
     doc.on('data', (chunk) => chunks.push(chunk));
@@ -383,21 +502,40 @@ function generateReturnPdfBuffer(returnRecord, statusHistory) {
     doc.on('error', reject);
 
     buildReturnPdfDoc(doc, returnRecord, statusHistory, [], { internal: false });
+    addPageFooters(doc, returnRecord.reference);
 
     doc.end();
   });
 }
 
 function section(doc, title, rows) {
-  doc.fontSize(13).fillColor('#0f172a').text(title);
-  doc.moveDown(0.3);
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const bandHeight = 20;
+
+  ensureSpace(doc, bandHeight + 30);
+
+  const bandY = doc.y;
+  doc.rect(left, bandY, width, bandHeight).fill(COLOR_BAND_BG);
+  doc.rect(left, bandY, 3, bandHeight).fill(COLOR_ACCENT);
+  doc
+    .font('Helvetica-Bold').fontSize(10.5).fillColor(COLOR_DARK)
+    .text(title.toUpperCase(), left + 12, bandY + 6, { width: width - 24, characterSpacing: 0.3 });
+  doc.font('Helvetica');
+
+  doc.x = left;
+  doc.y = bandY + bandHeight + 8;
+
   rows.forEach(([label, value]) => {
-    doc.fontSize(10).fillColor('#475569');
+    const text = safeText(value) || '-';
+    ensureSpace(doc, 14);
+    doc.fontSize(10).fillColor(COLOR_LABEL);
     if (label) {
-      doc.text(`${label}: `, { continued: true }).fillColor('#0f172a').text(value || '-');
+      doc.text(`${label}: `, left, doc.y, { continued: true }).fillColor(COLOR_DARK).text(text);
     } else {
-      doc.fillColor('#0f172a').text(value || '-');
+      doc.fillColor(COLOR_DARK).text(text, left, doc.y, { width });
     }
+    doc.x = left;
   });
   doc.moveDown();
 }
