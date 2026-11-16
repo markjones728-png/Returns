@@ -42,14 +42,14 @@ router.post('/submit', (req, res, next) => {
       return res.render('submit', { error: 'Please fill in all required fields.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
     }
 
-    // Every Terms & Conditions box on the form must be ticked - checked here as
-    // well as via the "required" attribute on each checkbox, in case a browser
-    // ever lets the form through without enforcing it client-side.
-    const TERMS_FIELDS = ['terms_returning_goods', 'terms_collection_date', 'terms_return_to_stock', 'terms_warranty_repair', 'terms_chargeable_repair'];
-    const allTermsAccepted = TERMS_FIELDS.every((f) => !!req.body[f]);
+    // The single "I accept all the Terms & Conditions above" box must be
+    // ticked - checked here as well as via the "required" attribute on the
+    // checkbox, in case a browser ever lets the form through without
+    // enforcing it client-side.
+    const allTermsAccepted = !!req.body.terms_accepted_all;
     if (!allTermsAccepted) {
       cleanupTempFiles(req.files);
-      return res.render('submit', { error: 'Please tick every Terms & Conditions statement before submitting your return.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
+      return res.render('submit', { error: 'Please tick the box to accept the Terms & Conditions before submitting your return.', old: req.body, APPLICATION_TYPES, PRODUCT_TYPES });
     }
 
     const reference = nextReference();
