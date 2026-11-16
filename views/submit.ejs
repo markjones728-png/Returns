@@ -90,26 +90,18 @@
   </label>
 
   <h2 class="full section-heading">Terms &amp; Declarations</h2>
-  <p class="full muted" style="margin-top:-8px;">Please read and tick each statement below - all of them must be accepted before your return can be submitted.</p>
+  <p class="full muted" style="margin-top:-8px;">Please read all of the statements below - they must all be accepted (tick the box at the end) before your return can be submitted.</p>
 
   <div class="full terms-block">
     <h3>Returning Goods to the Company</h3>
     <p>To return any item, you must first complete the online returns form. This form should include the reason for the return, your details, and who to contact with questions.</p>
     <p>Once you submit the form, you'll receive a Return Merchandise Authorisation (RMA) number. This number must be clearly written on both the outside of the package and on a slip inside. If the package doesn't have an RMA number, the company cannot be held responsible for the goods and may dispose of them as they see fit.</p>
     <p>You are responsible for ensuring the goods are packaged properly to prevent damage during shipping. The company is not liable for items damaged in transit.</p>
-    <label class="checkbox-label">
-      <input type="checkbox" name="terms_returning_goods" required />
-      I have read and accept the above *
-    </label>
   </div>
 
   <div class="full terms-block">
     <h3>Collection of Your Return</h3>
     <p>We will provide you with a specific collection date for your return. Please ensure your package is ready in advance, as failed collection attempts may incur a fee.</p>
-    <label class="checkbox-label">
-      <input type="checkbox" name="terms_collection_date" required />
-      I have read and accept the above *
-    </label>
   </div>
 
   <details class="full card terms-block">
@@ -134,10 +126,6 @@
       <li>RT Automation Sales Order Number</li>
       <li>RT Automation Invoice Number</li>
     </ol>
-    <label class="checkbox-label">
-      <input type="checkbox" name="terms_return_to_stock" required />
-      I accept the above Terms and Conditions *
-    </label>
   </details>
 
   <details class="full card terms-block">
@@ -149,10 +137,6 @@
       <li>In the event a customer decides to purchase a new replacement, for an item they return as a warranty failure, should the returned item be repairable or found not to have a fault, it will be returned to the Customer in a working condition, rather than a credit being provided for the replacement item.</li>
       <li>If the returned item had been found to fail for a non-warranty fault, including but not limited to wind damage, collision, excessive force, or electrical damage the item will not be repaired under the terms of our warranty. In such instances the customer will be contacted and given the option of chargeable repair, return of the item or scrapping thereof. If a chargeable repair is requested a quote including the parts required and labour cost will be provided and must be accepted in writing prior to any work being carried out.</li>
     </ol>
-    <label class="checkbox-label">
-      <input type="checkbox" name="terms_warranty_repair" required />
-      I accept the above Terms &amp; Conditions *
-    </label>
   </details>
 
   <details class="full card terms-block">
@@ -188,11 +172,14 @@
       <li>You must respond to any quotation and instruct one of the above options (Accept, Return Disassembled, or Scrap) within 30 days of the quote's issue date.</li>
       <li>If no response is received within this 30-day period, we may scrap the item.</li>
     </ol>
-    <label class="checkbox-label">
-      <input type="checkbox" name="terms_chargeable_repair" required />
-      I accept the above Terms &amp; Conditions *
-    </label>
   </details>
+
+  <div class="full terms-block">
+    <label class="checkbox-label">
+      <input type="checkbox" name="terms_accepted_all" required />
+      I have read and accept all of the Terms &amp; Conditions and Declarations above *
+    </label>
+  </div>
 
   <button type="submit" class="btn btn-primary full">Submit Return</button>
 </form>
