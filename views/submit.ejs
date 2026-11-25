@@ -52,6 +52,19 @@
     <label>Serial Number / BC Code *
     <input type="text" name="serial_number" value="<%= old.serial_number || '' %>" required />
   </label>
+  <details class="full" style="margin:-8px 0 0;">
+    <summary style="cursor:pointer;color:#0284c7;">&#9432; Not sure how to read your Serial Number / BC Code? Click here for examples</summary>
+    <div style="margin-top:10px;">
+      <p class="muted">Example of where to find the label on your product:</p>
+      <img src="/images/bc-code-label-example.png" alt="Example of the Roger Technology label on a product, showing where the LOTTO/BC code is printed" style="max-width:100%;height:auto;margin-bottom:16px;" />
+
+      <p class="muted">How to read the code - products made from 2022 onwards:</p>
+      <img src="/images/bc-code-guide-from-2022.png" alt="Guide to reading the LOTTO/BC code format used on products made from 2022 onwards" style="max-width:100%;height:auto;margin-bottom:16px;" />
+
+      <p class="muted">How to read the code - products made up to 31/12/2021:</p>
+      <img src="/images/bc-code-guide-until-2021.png" alt="Guide to reading the LOTTO/BC code format used on products made up to 31 December 2021" style="max-width:100%;height:auto;" />
+    </div>
+  </details>
   <label class="full">Description of Fault *
     <textarea name="fault_description" rows="5" required><%= old.fault_description || '' %></textarea>
   </label>
